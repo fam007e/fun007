@@ -1,0 +1,11 @@
+import os
+
+file_path = input("Insert the path of the file to be deleted: e.g. /users/username/Downloads/file.pdf  ")
+
+print(file_path)
+
+if os.path.isfile(file_path):
+    os.remove(file_path)
+    print("File has been successfully deleted!")
+else:
+    print('This file does NOT exist!!!')
