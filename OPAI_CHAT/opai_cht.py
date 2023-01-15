@@ -2,7 +2,7 @@ import openai
 import json
 
 # Replace YOUR_API_KEY with your actual API key
-openai.api_key = "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"
+openai.api_key = "sksk-dc3hgv732LPqOUF8eM7eT3BlbkFJu2rdpxLBhmzAZiLtbAHA-xAAWIChYZsK3ewEeXCaGT3BlbkFJSHeJovSMY1JP3deREnsL"
 
 # conversation history
 history = []
