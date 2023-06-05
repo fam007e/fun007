@@ -24,10 +24,16 @@ if __name__ == '__main__':
     # Divide the workload among the available cores
     workload = num_iterations // num_cores
     
+    start_time = time.time()  # Start time
+    
     with Pool(processes=num_cores) as pool:
         results = pool.map(M_PI, [workload] * num_cores)
     
     # Combine the results from different cores
     pi_estimate = sum(results) / num_cores
     
-    print(pi_estimate)
+    end_time = time.time()  # End time
+    elapsed_time = end_time - start_time  # Time taken in seconds
+    
+    print("Estimated Pi:", pi_estimate)
+    print("Time taken:", elapsed_time, "seconds")
