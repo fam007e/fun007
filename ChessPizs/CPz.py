@@ -1,3 +1,10 @@
+import numpy as np
+
+
+
+
+
+
 def generate_possible_moves(piece, piece_color, start_row, start_col, own_team, opponent_team):
     """
     Generates possible positions a chess piece can move based on its starting position.
