@@ -43,5 +43,5 @@ def generate_possible_moves(piece, start_row, start_col):
     return moves
 
 rook = "rook"
-start_col = 0  # column index
+start_col = 1  # column index
 print(generate_possible_moves(rook, 1, start_col))
