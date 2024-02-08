@@ -12,7 +12,7 @@ def rename_files(directory, extensions):
     
     # Rename files with random names
     for filename in files:
-        if filename != 'rand_gen_name.py':
+        if filename != 'rand_name_gen.py':
             ext = os.path.splitext(filename)[1]
             new_name = str(uuid.uuid4())[:8] + ext
             os.rename(filename, new_name)
