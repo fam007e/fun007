@@ -18,12 +18,12 @@ def generate_password(length, use_case_variance, use_numbers, use_special):
 
 def main():
     parser = argparse.ArgumentParser(description="Generate a random password.")
+
     parser.add_argument("length", type=int, help="Length of the password")
 
-    group = parser.add_argument_group("options")
-    group.add_argument("-c", "--case-variance", action="store_true", help="Include both uppercase and lowercase letters")
-    group.add_argument("-n", "--numbers", action="store_true", help="Include numbers")
-    group.add_argument("-s", "--special", action="store_true", help="Include special characters")
+    parser.add_argument("-c", "--case-variance", action="store_true", help="Include both uppercase and lowercase letters")
+    parser.add_argument("-n", "--numbers", action="store_true", help="Include numbers")
+    parser.add_argument("-s", "--special", action="store_true", help="Include special characters")
 
     args = parser.parse_args()
 
