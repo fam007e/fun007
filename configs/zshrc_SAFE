@@ -537,7 +537,7 @@ bindkey "^R" history-incremental-pattern-search-backward
 bindkey "^S" history-incremental-pattern-search-forward
 
 # Created by `pipx` on 2024-01-27 17:49:15
-export PATH="$PATH:/home/fam007e/.local/bin"
+export PATH="$PATH:/home/user/.local/bin"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 eval "$(zoxide init --cmd cd zsh)"
 
