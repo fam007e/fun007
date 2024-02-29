@@ -1,19 +1,18 @@
-# Are we running under grsecurity's RBAC?
-rbac_auth() {
-    local auth_to_role='admin'
-    if [ "${USER}" = 'root' ]; then
-        if ! grep -qE '^RBAC:' "/proc/self/status" && command -v gradm > /dev/null 2>&1; then
-            echo -e "\n${BLUE}*${NC} ${GREEN}RBAC${NC} Authorize to '${auth_to_role}' RBAC role."
-            gradm -a "${auth_to_role}" && exec "${SHELL}" "$@"
-        fi
-    fi
-}
-rbac_auth
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
 
+source ~/powerlevel10k/powerlevel10k.zsh-theme
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
 source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh 2>/dev/null
 source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh 2>/dev/null
-
+#Set ZSH_THEME="agnoster"
 
 # Basic zsh config.
 umask 077
@@ -537,16 +536,17 @@ bindkey "^R" history-incremental-pattern-search-backward
 bindkey "^S" history-incremental-pattern-search-forward
 
 # Created by `pipx` on 2024-01-27 17:49:15
-export PATH="$PATH:/home/user/.local/bin"
+export PATH="$PATH:/home/fam007e/.local/bin"
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 eval "$(zoxide init --cmd cd zsh)"
+export PATH="$PATH:/home/fam007e/hyprpicker/build"
 
 
 alias pbcopy='xclip -selection clipboard'
 alias pbpaste='xclip -selection clipboard -o' 
-alias ls="exa"
-alias ll="exa -alh"
-alias tree="exa --tree"
+alias ls="eza"
+alias ll="eza -alh"
+alias tree="eza --tree"
 
 if command -v bat > /dev/null; then
      alias cat="bat"
@@ -554,4 +554,19 @@ elif command -v batcat > /dev/null; then
      alias cat="batcat"
 fi
 
+
+#typeset -g POWERLEVEL9K_INSTANT_PROMPT=quiet
+
 neofetch | lolcat | pv -qL 250
+
+if [ -e /home/fam007e/.nix-profile/etc/profile.d/nix.sh ]; then . /home/fam007e/.nix-profile/etc/profile.d/nix.sh; fi # added by Nix installer
+
+
+sudo() {
+  if [ "$1" = "apt" ]; then
+    shift
+    command sudo nala "$@"
+  else
+    command sudo "$@"
+  fi
+}
