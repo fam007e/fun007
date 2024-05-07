@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 
 # Install necessary packages
 #sudo apt install -y unzip fonts-recommended fonts-ubuntu fonts-font-awesome fonts-terminus
