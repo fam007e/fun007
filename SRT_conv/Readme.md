@@ -91,12 +91,13 @@ The script supports all languages available through the Google Translator API. S
 - `ru` \- Russian
 - `hi` \- Hindi
 
-# License
-This project is licensed under the MIT License. See the LICENSE file for details.
+## License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-# Acknowledgements
+
+## Acknowledgements
 - This script uses the `deep_translator` library. Special thanks to the contributors of this library.
 
-# Contributions
+## Contributions
 Contributions are welcome! Please open an issue or submit a pull request for any improvements or bug fixes.
 
