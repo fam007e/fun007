@@ -1,5 +1,4 @@
-
-neofetch | pv -qL 250 | lolcat
+#neofetch | pv -qL 250 | lolcat
 
 # Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
 # Initialization code that may require console input (password prompts, [y/n]
@@ -174,7 +173,7 @@ startx() {
 
 termtitle() {
     case "$TERM" in
-        rxvt*|xterm*|nxterm|gnome|screen|screen-*|st|st-*)
+        rxvt*|xterm*|nxterm|kitty|gnome|screen|screen-*|st|st-*)
             local prompt_host="${(%):-%m}"
             local prompt_user="${(%):-%n}"
             local prompt_char="${(%):-%~}"
@@ -478,7 +477,7 @@ else
     alias diff="diff -Nuar"
 fi
 
-plugins=(zsh-autosuggestions zsh-syntax-highlighting)
+#plugins=(zsh-autosuggestions zsh-syntax-highlighting)
 REPORTTIME=15
 
 
@@ -548,6 +547,10 @@ alias pbpaste='xclip -selection clipboard -o'
 alias ls="eza"
 alias ll="eza -alh"
 alias tree="eza --tree"
+alias clear-pacman-cache="sudo pacman -Sc"
+alias clear-yay-cache="yay -Sc"
+alias clear-cache="sudo pacman -Sc && yay -Sc"
+
 
 if command -v bat > /dev/null; then
      alias cat="bat"
