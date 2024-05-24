@@ -35,6 +35,23 @@ zinit snippet OMZP::aws
 zinit snippet OMZP::kubectl
 zinit snippet OMZP::kubectx
 zinit snippet OMZP::command-not-found
+zinit snippet OMZP::dotenv
+zinit snippet OMZP::rake
+zinit snippet OMZP::rbenv
+zinit snippet OMZP::ruby
+#zinit snippet OMZP::adb
+zinit snippet OMZP::python
+zinit snippet OMZP::rust
+zinit snippet OMZP::rvm
+zinit snippet OMZP::ssh
+zinit snippet OMZP::svn
+zinit snippet OMZP::thefuck
+zinit snippet OMZP::tmux
+zinit snippet OMZP::tldr
+zinit snippet OMZP::sdk
+zinit snippet OMZP::zoxide
+#zinit snippet OMZP::zsh-navigation-tools
+#zinit snippet OMZP::ufw
 
 # Load completions
 autoload -Uz compinit && compinit
@@ -125,6 +142,7 @@ alias clear-cache='sudo pacman -Sc && yay -Sc'
 alias passwdGEN='python3 fun007/Passwd_Generator/passwd_gen.py -c -n -s 19'
 alias rm='rm -f'
 alias rmd='rm -rf'
+alias ping='ping -c 10'
 
 if command -v bat > /dev/null; then
      alias cat="bat"
