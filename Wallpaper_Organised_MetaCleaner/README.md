@@ -23,9 +23,9 @@ The Wallpaper Cleaner Script (`wp_cleaner.sh`) is a Bash script designed to help
    chmod +x wp_cleaner.sh
    ```
 4. Run the script:
-  ```sh
-  ./wp_cleaner.sh
-  ```
+   ```sh
+   ./wp_cleaner.sh
+   ```
 
 Follow the on-screen prompts to specify the wallpaper directory relative to your home directory, as well as the minimum width and height in pixels for the images. Confirm or change the entered dimensions before proceeding with the cleanup process.
 
