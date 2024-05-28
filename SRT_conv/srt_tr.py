@@ -2,6 +2,7 @@ import argparse
 from deep_translator import GoogleTranslator
 import re
 import os
+from tqdm import tqdm
 
 def translate_srt(input_file, source_language, target_language):
     translator = GoogleTranslator(source=source_language, target=target_language)
@@ -10,7 +11,7 @@ def translate_srt(input_file, source_language, target_language):
         lines = infile.readlines()
 
     translated_lines = []
-    for line in lines:
+    for line in tqdm(lines, desc="Translating", unit=" line"):
         stripped_line = line.strip()
         if re.match(r'^\d+$', stripped_line) or re.match(r'^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', stripped_line) or stripped_line == "":
             # Line number, timestamp, or empty line, do not translate

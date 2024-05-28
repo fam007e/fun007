@@ -1,4 +1,4 @@
-#!/root/myscripts/fun007/SRT_conv/venv/bin/python3
+#!/home/fam007e/fun007/SRT_conv/venv/bin/python
 # -*- coding: utf-8 -*-
 import re
 import sys
