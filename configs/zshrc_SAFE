@@ -143,6 +143,7 @@ alias passwdGEN='python3 fun007/Passwd_Generator/passwd_gen.py -c -n -s 19'
 alias rm='rm -f'
 alias rmd='rm -rf'
 alias ping='ping -c 10'
+alias x='exit'
 
 if command -v bat > /dev/null; then
      alias cat="bat"
@@ -155,3 +156,15 @@ if command -v colordiff > /dev/null 2>&1; then
 else
     alias diff="diff -Nuar"
 fi
+
+# Alias to show all established connections and their resolved names
+alias show_connections='sudo netstat -tupn | grep "ESTABLISHED" | awk '\''{print $5}'\'' | cut -d: -f1 | sort | uniq | xargs -I {} sh -c '\''echo -n "{}: "; nslookup {}'\'' | grep "name ="'
+
+# Alias to show the external NAT’ed IP
+alias external_ip='IP=$(curl -s https://api.ipify.org) && echo "This is your External IP address $IP."'
+
+# Alias to show the installation date of the system
+alias install_date='install_date=$(sudo pacman -Qi linux | grep "Install Date" | cut -d ":" -f2 | xargs) && echo "Your computer was installed on $install_date."'
+
+# Alias to show the last reboot time of the system
+alias last_reboot='FQDN=$(uname -n); hostname=$(echo $FQDN | cut -d. -f1); last_reboot=$(date -d @$(( $(date +%s) - $(awk '\''{print int($1)}'\'' /proc/uptime) ))); echo "The $hostname system was last rebooted on $last_reboot."'
