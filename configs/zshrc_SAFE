@@ -144,6 +144,7 @@ alias rm='rm -f'
 alias rmd='rm -rf'
 alias ping='ping -c 10'
 alias x='exit'
+alias ff='fastfetch'
 
 if command -v bat > /dev/null; then
      alias cat="bat"

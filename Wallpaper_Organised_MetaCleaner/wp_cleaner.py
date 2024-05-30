@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 import subprocess
+from itertools import chain
 
 # Prompt user for the wallpaper directory relative to home
 RELATIVE_WALLPAPER_DIR = input("Enter the wallpaper directory relative to $HOME/: ")
@@ -37,19 +38,24 @@ while True:
 os.chdir(WALLPAPER_DIR)
 
 # Loop through each image in the directory
-for image in Path(".").glob("*.jpg") + Path(".").glob("*.jpeg") + Path(".").glob("*.png") + Path(".").glob("*.svg"):
+for image in chain(Path(".").glob("*.jpg"), Path(".").glob("*.jpeg"), Path(".").glob("*.png"), Path(".").glob("*.svg")):
     image = str(image)
-    # Get image dimensions
-    width = subprocess.check_output(["exiftool", "-ImageWidth", "-b", image]).strip().decode()
-    height = subprocess.check_output(["exiftool", "-ImageHeight", "-b", image]).strip().decode()
+    try:
+        # Get image dimensions
+        width = subprocess.check_output(["exiftool", "-ImageWidth", "-b", image]).strip().decode()
+        height = subprocess.check_output(["exiftool", "-ImageHeight", "-b", image]).strip().decode()
 
-    # Check if dimensions are less than specified
-    if int(width) < MIN_WIDTH or int(height) < MIN_HEIGHT:
-        print(f"Deleting {image} with dimensions {width}x{height}")
-        os.remove(image)
-    else:
-        # Remove all metadata from the image
-        subprocess.run(["exiftool", "-all=", image])
-        # Overwrite the original file without creating a backup
-        subprocess.run(["exiftool", "-overwrite_original", image])
-        print(f"Metadata removed from {image} with dimensions {width}x{height}")
+        # Check if dimensions are less than specified
+        if int(width) < MIN_WIDTH or int(height) < MIN_HEIGHT:
+            print(f"Deleting {image} with dimensions {width}x{height}")
+            os.remove(image)
+        else:
+            # Remove all metadata from the image
+            subprocess.run(["exiftool", "-all=", image])
+            # Overwrite the original file without creating a backup
+            subprocess.run(["exiftool", "-overwrite_original", image])
+            print(f"Metadata removed from {image} with dimensions {width}x{height}")
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to process {image}: {e}")
+    except ValueError as e:
+        print(f"Invalid dimensions for {image}: {e}")
