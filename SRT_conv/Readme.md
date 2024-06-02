@@ -92,7 +92,7 @@ The script supports all languages available through the Google Translator API. S
 - `hi` \- Hindi
 
 ## License
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See the [LICENSE](../LICENSE) file for details.
 
 
 ## Acknowledgements
