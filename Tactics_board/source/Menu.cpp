@@ -6,17 +6,20 @@ Menu::Menu() {
         std::cerr << "Error loading menu icon texture" << std::endl;
     }
     menuIconSprite.setTexture(menuIconTexture);
-    menuIconSprite.setPosition(10, 10); // Top left corner
 
     if (!closeIconTexture.loadFromFile("../resources/icons/close_icon.png")) {
         std::cerr << "Error loading close icon texture" << std::endl;
     }
     closeIconSprite.setTexture(closeIconTexture);
-    closeIconSprite.setPosition(1180, 10); // Top right corner, considering 1280 width and 100 width of icon
 }
 
 void Menu::initialize(const sf::Vector2u& windowSize) {
-    // Initialize menu based on window size if needed
+    float iconSize = windowSize.x * 0.05f; // 5% of the screen width
+    menuIconSprite.setScale(iconSize / menuIconTexture.getSize().x, iconSize / menuIconTexture.getSize().y);
+    menuIconSprite.setPosition(0.05f * windowSize.x, 0.05f * windowSize.y); // Top left corner
+
+    closeIconSprite.setScale(iconSize / closeIconTexture.getSize().x, iconSize / closeIconTexture.getSize().y);
+    closeIconSprite.setPosition(0.9f * windowSize.x, 0.05f * windowSize.y); // Top right corner
 }
 
 void Menu::handleMouseClick(const sf::Vector2i& mousePos, bool& menuVisible, bool& dragging, int& selectedTool) {

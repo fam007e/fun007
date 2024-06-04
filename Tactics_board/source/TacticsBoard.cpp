@@ -15,8 +15,25 @@ TacticsBoard::TacticsBoard()
     menu.initialize(sf::Vector2u(WINDOW_WIDTH, WINDOW_HEIGHT));
 
     // Initialize players
-    for (int i = 0; i < 22; ++i) {
-        players.emplace_back();
+    int numPlayersPerTeam = 11; // Assuming 11 players per team
+    float fieldWidth = WINDOW_WIDTH; // Width of the window
+    float fieldHeight = WINDOW_HEIGHT; // Height of the window
+    float playerRadius = 10.0f; // Radius of each player circle
+
+    // Initialize team 1 players (left side)
+    float startX = fieldWidth * 0.1f; // Start position from left edge
+    float startY = fieldHeight / 2 - (numPlayersPerTeam / 2 * playerRadius * 2); // Center vertically
+
+    for (int i = 0; i < numPlayersPerTeam; ++i) {
+        players.emplace_back(sf::Vector2f(startX + i * (playerRadius * 2), startY + i * (playerRadius * 2)));
+    }
+
+    // Initialize team 2 players (right side)
+    startX = fieldWidth * 0.9f; // Start position from right edge
+    startY = fieldHeight / 2 - (numPlayersPerTeam / 2 * playerRadius * 2); // Center vertically
+
+    for (int i = 0; i < numPlayersPerTeam; ++i) {
+        players.emplace_back(sf::Vector2f(startX - i * (playerRadius * 2), startY + i * (playerRadius * 2)));
     }
 }
 
