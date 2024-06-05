@@ -2,44 +2,107 @@
 #include <iostream>
 
 Menu::Menu() {
-    if (!menuIconTexture.loadFromFile("../resources/icons/menu_icon.png")) {
-        std::cerr << "Error loading menu icon texture" << std::endl;
-    }
-    menuIconSprite.setTexture(menuIconTexture);
+    // Preload icons with file paths
+    std::vector<std::string> iconFilepaths = {
+        "../resources/icons/menu_icon.png",
+        "../resources/icons/close_icon.png",
+        "../resources/icons/arrow_icon.png",
+        "../resources/icons/line_icon.png",
+        "../resources/icons/eraser_icon.png",
+        "../resources/icons/oval_icon.png",
+        "../resources/icons/rectangle_icon.png",
+        "../resources/icons/playerlist_icon.png"
+    };
 
-    if (!closeIconTexture.loadFromFile("../resources/icons/close_icon.png")) {
-        std::cerr << "Error loading close icon texture" << std::endl;
+    // Load textures and create sprites
+    for (const auto& filepath : iconFilepaths) {
+        Icon icon;
+        if (!icon.texture.loadFromFile(filepath)) {
+            std::cerr << "Error loading texture: " << filepath << std::endl;
+        }
+        icon.sprite.setTexture(icon.texture);
+        icons.push_back(icon);
     }
-    closeIconSprite.setTexture(closeIconTexture);
+}
+
+void Menu::generateShadow(Icon& icon) {
+    // Create a new image for the shadow based on the original texture
+    sf::Image image = icon.texture.copyToImage();
+    sf::Image shadowImage;
+    shadowImage.create(image.getSize().x, image.getSize().y, sf::Color(0, 0, 0, 0));
+
+    // Process each pixel to create a shadow
+    for (unsigned y = 0; y < image.getSize().y; ++y) {
+        for (unsigned x = 0; x < image.getSize().x; ++x) {
+            sf::Color color = image.getPixel(x, y);
+            if (color.a > 0) {  // Only shadow non-transparent pixels
+                shadowImage.setPixel(x, y, sf::Color(0, 0, 0, 100)); // Semi-transparent black
+            }
+        }
+    }
+
+    // Load the modified image into the shadow texture
+    sf::Texture shadowTexture;
+    shadowTexture.loadFromImage(shadowImage);
+    icon.shadow.setTexture(shadowTexture);
+    icon.shadow.setScale(icon.sprite.getScale());
+    icon.shadow.setPosition(icon.sprite.getPosition() + sf::Vector2f(5, 5)); // Offset position for shadow
 }
 
 void Menu::initialize(const sf::Vector2u& windowSize) {
-    float iconSize = windowSize.x * 0.05f; // 5% of the screen width
-    menuIconSprite.setScale(iconSize / menuIconTexture.getSize().x, iconSize / menuIconTexture.getSize().y);
-    menuIconSprite.setPosition(0.05f * windowSize.x, 0.05f * windowSize.y); // Top left corner
+    // Define sizes and positions
+    float menuIconSize = windowSize.x * 0.045f;
+    float closeIconSize = windowSize.x * 0.036f;
+    float toolIconSize = windowSize.x * 0.02f;
+    float startY = 0.12f * windowSize.y;
+    float spacing = toolIconSize * 1.2f;
 
-    closeIconSprite.setScale(iconSize / closeIconTexture.getSize().x, iconSize / closeIconTexture.getSize().y);
-    closeIconSprite.setPosition(0.9f * windowSize.x, 0.05f * windowSize.y); // Top right corner
+    // Initialize icons with scales and positions
+    initializeIcon(icons[0], "../resources/icons/menu_icon.png", menuIconSize, {0.02f * windowSize.x, 0.02f * windowSize.y});
+    initializeIcon(icons[1], "../resources/icons/close_icon.png", closeIconSize, {0.98f * windowSize.x - icons[1].sprite.getGlobalBounds().width, 0.02f * windowSize.y});
+
+    for (size_t i = 2; i < icons.size(); ++i) {
+        initializeIcon(icons[i], "", toolIconSize, {0.02f * windowSize.x, startY + (i - 2) * spacing});
+    }
+}
+
+void Menu::initializeIcon(Icon& icon, const std::string& filepath, float scale, const sf::Vector2f& position) {
+    if (!filepath.empty()) {
+        icon.texture.loadFromFile(filepath);
+    }
+    icon.sprite.setScale(scale / icon.texture.getSize().x, scale / icon.texture.getSize().y);
+    icon.sprite.setPosition(position);
+    generateShadow(icon);  // Generate shadow for the icon
 }
 
 void Menu::handleMouseClick(const sf::Vector2i& mousePos, bool& menuVisible, bool& dragging, int& selectedTool) {
-    if (isPointInSprite(menuIconSprite, mousePos)) {
+    if (isPointInSprite(icons[0].sprite, mousePos)) {
         menuVisible = !menuVisible;
         std::cout << "Menu icon clicked" << std::endl;
     }
+
     if (menuVisible) {
-        // Handle clicks on menu items
-    }
-    if (isPointInSprite(closeIconSprite, mousePos)) {
-        // Handle close icon click if needed
+        for (size_t i = 2; i < icons.size(); ++i) {
+            if (isPointInSprite(icons[i].sprite, mousePos)) {
+                selectedTool = static_cast<int>(i - 2);
+                break;
+            }
+        }
     }
 }
 
 void Menu::draw(sf::RenderWindow& window, bool menuVisible) {
-    window.draw(menuIconSprite);
+    // Always draw the menu and close icons
+    window.draw(icons[0].shadow);
+    window.draw(icons[0].sprite);
+    window.draw(icons[1].shadow);
+    window.draw(icons[1].sprite);
+
     if (menuVisible) {
-        window.draw(closeIconSprite);
-        // Draw other menu items/icons
+        for (size_t i = 2; i < icons.size(); ++i) {
+            window.draw(icons[i].shadow);
+            window.draw(icons[i].sprite);
+        }
     }
 }
 
