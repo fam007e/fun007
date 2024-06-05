@@ -1,0 +1,1 @@
+/usr/bin/c++ CMakeFiles/tactics_board.dir/source/Menu.cpp.o CMakeFiles/tactics_board.dir/source/Player.cpp.o CMakeFiles/tactics_board.dir/source/TacticsBoard.cpp.o CMakeFiles/tactics_board.dir/source/main.cpp.o -o tactics_board  /usr/lib/libsfml-graphics.so.2.6.1 /usr/lib/libsfml-window.so.2.6.1 /usr/lib/libsfml-system.so.2.6.1

@@ -9,18 +9,18 @@
 class TacticsBoard {
 public:
     TacticsBoard();
-
     void run();
 
 private:
     sf::Texture pitchTexture;
     sf::Sprite pitchSprite;
 
-    std::vector<Player> players; // Add this line
-    bool menuVisible; // Add this line
-    bool dragging; // Add this line
-    Player* selectedPlayer; // Add this line
-    int selectedTool; // Add this line
+    std::vector<Player> players;
+    bool menuVisible;
+    bool dragging;
+    Player* selectedPlayer;
+    int selectedTool;
+    sf::Vector2f oldMousePosition;
 
     Menu menu;
 

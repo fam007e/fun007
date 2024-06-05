@@ -1,23 +1,28 @@
 #include "TacticsBoard.hpp"
 #include <iostream>
 
-TacticsBoard::TacticsBoard() 
+TacticsBoard::TacticsBoard()
     : menuVisible(false), dragging(false), selectedPlayer(nullptr), selectedTool(-1) {
+    // Get the current desktop resolution
+    sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
+    unsigned int windowWidth = desktop.width;
+    unsigned int windowHeight = desktop.height;
+
     if (!pitchTexture.loadFromFile("../resources/pitches/football_pitch.png")) {
         std::cerr << "Error loading football pitch texture" << std::endl;
     }
     pitchSprite.setTexture(pitchTexture);
     pitchSprite.setScale(
-        float(WINDOW_WIDTH) / pitchTexture.getSize().x,
-        float(WINDOW_HEIGHT) / pitchTexture.getSize().y
+        float(windowWidth) / pitchTexture.getSize().x,
+        float(windowHeight) / pitchTexture.getSize().y
     );
 
-    menu.initialize(sf::Vector2u(WINDOW_WIDTH, WINDOW_HEIGHT));
+    menu.initialize(sf::Vector2u(windowWidth, windowHeight));
 
     // Initialize players
     int numPlayersPerTeam = 11; // Assuming 11 players per team
-    float fieldWidth = WINDOW_WIDTH; // Width of the window
-    float fieldHeight = WINDOW_HEIGHT; // Height of the window
+    float fieldWidth = windowWidth; // Width of the window
+    float fieldHeight = windowHeight; // Height of the window
     float playerRadius = 10.0f; // Radius of each player circle
 
     // Initialize team 1 players (left side)
@@ -38,7 +43,12 @@ TacticsBoard::TacticsBoard()
 }
 
 void TacticsBoard::run() {
-    sf::RenderWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), "Tactics Board", sf::Style::Fullscreen);
+    // Get the current desktop resolution
+    sf::VideoMode desktop = sf::VideoMode::getDesktopMode();
+    unsigned int windowWidth = desktop.width;
+    unsigned int windowHeight = desktop.height;
+
+    sf::RenderWindow window(sf::VideoMode(windowWidth, windowHeight), "Tactics Board", sf::Style::Fullscreen);
     while (window.isOpen()) {
         sf::Event event;
         while (window.pollEvent(event)) {
