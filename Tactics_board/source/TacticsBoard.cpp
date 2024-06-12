@@ -1,5 +1,8 @@
+// TacticsBoard.cpp
 #include "TacticsBoard.hpp"
+#include "Player.hpp"
 #include <iostream>
+#include <vector>
 
 TacticsBoard::TacticsBoard()
     : menuVisible(false), dragging(false), selectedPlayer(nullptr), selectedTool(-1) {
@@ -20,6 +23,7 @@ TacticsBoard::TacticsBoard()
     menu.initialize(sf::Vector2u(windowWidth, windowHeight));
 
     // Initialize players
+    std::vector<std::string> playerNames = {"Player1", "Player2", "Player3", "Player4", "Player5", "Player6", "Player7", "Player8", "Player9", "Player10", "Player11"};
     int numPlayersPerTeam = 11; // Assuming 11 players per team
     float fieldWidth = windowWidth; // Width of the window
     float fieldHeight = windowHeight; // Height of the window
@@ -30,7 +34,7 @@ TacticsBoard::TacticsBoard()
     float startY = fieldHeight / 2 - (numPlayersPerTeam / 2 * playerRadius * 2); // Center vertically
 
     for (int i = 0; i < numPlayersPerTeam; ++i) {
-        players.emplace_back(sf::Vector2f(startX + i * (playerRadius * 2), startY + i * (playerRadius * 2)));
+        players.emplace_back(sf::Vector2f(startX + i * (playerRadius * 2), startY + i * (playerRadius * 2)), playerNames[i], i + 1);
     }
 
     // Initialize team 2 players (right side)
@@ -38,7 +42,7 @@ TacticsBoard::TacticsBoard()
     startY = fieldHeight / 2 - (numPlayersPerTeam / 2 * playerRadius * 2); // Center vertically
 
     for (int i = 0; i < numPlayersPerTeam; ++i) {
-        players.emplace_back(sf::Vector2f(startX - i * (playerRadius * 2), startY + i * (playerRadius * 2)));
+        players.emplace_back(sf::Vector2f(startX - i * (playerRadius * 2), startY + i * (playerRadius * 2)), playerNames[i], i + 1);
     }
 }
 
@@ -87,22 +91,37 @@ void TacticsBoard::handleMouseEvent(sf::Event& event, sf::RenderWindow& window) 
             selectedPlayer = nullptr;
         }
     } else if (event.type == sf::Event::MouseMoved) {
-        if (dragging && selectedPlayer != nullptr) {
+        if (dragging && selectedPlayer) {
             sf::Vector2i mousePos = sf::Mouse::getPosition(window);
             sf::Vector2f newMousePosition = window.mapPixelToCoords(mousePos);
-            selectedPlayer->setPosition(newMousePosition);
+            sf::Vector2f offset = newMousePosition - oldMousePosition;
+            sf::Vector2f newPosition = selectedPlayer->getPosition() + offset;
+
+            // Check for overlap with other players
+            bool overlap = false;
+            for (const auto& player : players) {
+                if (&player != selectedPlayer && player.contains(sf::Vector2i(newPosition))) {
+                    overlap = true;
+                    break;
+                }
+            }
+
+            if (!overlap) {
+                selectedPlayer->setPosition(newPosition);
+                oldMousePosition = newMousePosition;
+            }
         }
     }
 }
 
 void TacticsBoard::update() {
-    // Update logic
+    // Update logic if needed
 }
 
 void TacticsBoard::render(sf::RenderWindow& window) {
     window.draw(pitchSprite);
+    menu.draw(window, menuVisible);
+
     for (auto& player : players) {
         player.draw(window);
-    }
-    menu.draw(window, menuVisible);
-}
+    }}
