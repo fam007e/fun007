@@ -1,0 +1,53 @@
+#!/usr/bin/env sh
+
+# Directory containing the Python script and the JSON file
+script_dir="$HOME/dwm/scripts/FootballFixtures"
+
+# Path to the Python script
+python_script="$script_dir/footyfixture.py"
+
+# Function to create hyperlinks (works in some terminal emulators)
+hyperlink() {
+    text=$1
+    url=$2
+    printf "\033]8;;%s\033\\%s\033]8;;\033\\" "$url" "$text"
+}
+
+# Function to clear the current line
+clear_line() {
+    printf "\r\033[K"
+}
+
+# Duration for each cycle
+cycle_duration=$((6 * 60 * 60))  # 6 hours in seconds
+
+# Main loop to update JSON and display matches indefinitely
+while true; do
+    # Run the Python script to generate/update the JSON file
+    python3 "$python_script"
+
+    # Find the JSON file in the directory
+    json_file=$(find "$script_dir" -name "*.json" | head -n 1)
+
+    # Check if a JSON file was found
+    if [ -z "$json_file" ]; then
+        echo "No JSON file found in $script_dir"
+        exit 1
+    fi
+
+    # Parse and print the matches from the JSON file for the cycle duration
+    cycle_end_time=$((SECONDS + cycle_duration))
+    while [ $SECONDS -lt $cycle_end_time ]; do
+        jq -c '.[]' "$json_file" | while read -r match; do
+            home_team=$(echo "$match" | jq -r '.home_team')
+            away_team=$(echo "$match" | jq -r '.away_team')
+            match_time=$(echo "$match" | jq -r '.match_time')
+            stream_link=$(echo "$match" | jq -r '.stream_link')
+
+            match_text="$home_team vs $away_team $match_time"
+            clear_line  # Clear the line first
+            hyperlink "$match_text" "$stream_link"
+            sleep 3  # Wait for 3 second before removing the match
+        done
+    done
+done

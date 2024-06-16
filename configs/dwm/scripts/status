@@ -1,57 +1,110 @@
 #!/usr/bin/env sh
 
+# Log file path
 LOGFILE="$HOME/.cache/dwm_status.log"
 
 # Initialize
 printf "$$" > ~/.cache/pidofbar
 sec=0
 
-# Update functions
+# Function to fetch CPU load average
 update_cpu() {
   cpu=$(awk '{print $1}' /proc/loadavg)
 }
 
+# Function to fetch used memory
 update_memory() {
   memory=$(free -h | awk 'NR==2 {print $3}')
 }
 
+# Function to fetch current time in Asia/Dhaka timezone
 update_time() {
-  time=$(TZ='Asia/Dhaka' date +"%a %b %d %I:%M %p %Y")
+  time=$(TZ='Asia/Dhaka' date +"%I:%M %p %a %b %d, %Y")
 }
 
+# Function to fetch current weather in Dhaka using wttr.in
 update_weather() {
   weather=$(curl -s "https://wttr.in/dhaka?format=2" | awk '{gsub(/   /, " "); print}')
 }
 
+# Function to fetch battery status and capacity
 update_bat() {
   if [ -e /sys/class/power_supply/BAT0/status ]; then
     bat_status=$(< /sys/class/power_supply/BAT0/status)
-    if [ -e /sys/class/power_supply/BAT0/capacity ]; then
-      bat_capacity=$(< /sys/class/power_supply/BAT0/capacity)
-      case $bat_capacity in
-        100|9[0-9]|8[0-9]) bat_icon="" ;;
-        7[0-9]|6[0-9]) bat_icon="" ;;
-        5[0-9]|4[0-9]) bat_icon="" ;;
-        3[0-9]|2[0-9]) bat_icon="" ;;
-        1[0-9]|[0-9]) bat_icon="" ;;
-      esac
-      if [ "$bat_status" = "Charging" ]; then
-        bat="🔌 $bat_icon $bat_capacity%"
-      else
-        bat="🔋 $bat_icon $bat_capacity%"
-      fi
+    bat_capacity=$(< /sys/class/power_supply/BAT0/capacity)
+    case $bat_capacity in
+      100|9[0-9]|8[0-9]) bat_icon="" ;;
+      7[0-9]|6[0-9]) bat_icon="" ;;
+      5[0-9]|4[0-9]) bat_icon="" ;;
+      3[0-9]|2[0-9]) bat_icon="" ;;
+      1[0-9]|[0-9]) bat_icon="" ;;
+    esac
+    if [ "$bat_status" = "Charging" ]; then
+      bat="🔌 $bat_icon $bat_capacity%"
     else
-      bat="Battery capacity not available"
+      bat="🔋 $bat_icon $bat_capacity%"
     fi
   else
     bat="Battery status unavailable"
   fi
 }
 
+# Function to fetch volume information and mute status
 update_vol() {
-  vol="奄 $(pactl list sinks | awk '/Volume:/ {print $5}' | head -n 1 | tr -d '%')%"
+  vol_info=$(pactl list sinks | awk '
+    /^Sink / { sink = $2 }
+    /State: RUNNING/ { running_sink = sink }
+    $1 == "Volume:" {
+      volumes[sink] = $5
+      if (sink == running_sink) {
+        running_volume = $5
+      }
+    }
+    $1 == "Mute:" {
+      mutes[sink] = $2
+      if (sink == running_sink) {
+        running_mute = $2
+      }
+    }
+    END {
+      if (running_sink) {
+        if (running_mute == "yes" || running_volume == "0%") {
+          print "🔇"  # Muted icon
+        } else {
+          print running_volume
+        }
+      } else {
+        for (sink in volumes) {
+          if (volumes[sink] != "100%") {
+            if (mutes[sink] == "yes" || volumes[sink] == "0%") {
+              print "🔇"  # Muted icon
+            } else {
+              print volumes[sink]
+            }
+            exit
+          }
+        }
+      }
+    }
+  ')
+
+  if [ "$vol_info" = "🔇" ]; then
+    vol="🔇"
+  else
+    volume_percentage="${vol_info%\%}"
+    if [ "$volume_percentage" -ge 75 ]; then
+      vol="📢 $vol_info"  # High volume icon
+    elif [ "$volume_percentage" -ge 50 ]; then
+      vol="🔊 $vol_info"  # Medium volume icon
+    elif [ "$volume_percentage" -ge 25 ]; then
+      vol="🔉 $vol_info"  # Low volume icon
+    else
+      vol="🔈 $vol_info"  # Very low volume icon
+    fi
+  fi
 }
 
+# Function to fetch current backlight status
 update_backlight() {
   if [ -e /sys/class/backlight/intel_backlight/actual_brightness ]; then
     actual_brightness=$(cat /sys/class/backlight/intel_backlight/actual_brightness)
@@ -64,37 +117,37 @@ update_backlight() {
   fi
 }
 
-# Display function
+# Function to display status on dwm
 display() {
   status=""
   [ -n "$cpu" ] && status+="CPU: $cpu "
   [ -n "$memory" ] && status+="Mem: $memory "
-  [ -n "$weather" ] && status+="Weather: $weather "
-  [ -n "$bat" ] && status+="Bat: $bat "
-  [ -n "$backlight" ] && status+="BLight: $backlight "
-  [ -n "$vol" ] && status+="Vol: $vol "
+  [ -n "$weather" ] && status+="$weather "
+  [ -n "$bat" ] && status+="$bat "
+  [ -n "$backlight" ] && status+="$backlight "
+  [ -n "$vol" ] && status+="$vol "
   [ -n "$time" ] && status+="$time"
   xsetroot -name "$status"
 }
 
-# Set up signal handlers
+# Signal handlers for updating specific parts of status
 trap "update_vol; display" "RTMIN"
 trap "update_backlight; display" "RTMIN+1"
 trap "update_bat; display" "RTMIN+2"
 
 # Initial updates
-update_vol
-update_backlight
-update_bat
-update_time
-update_weather
 update_cpu
 update_memory
+update_time
+update_weather
+update_bat
+update_backlight
+update_vol
 
 # Initial display
 display
 
-# Main loop
+# Main loop to continuously update and display status
 while true; do
   sleep 1
   sec=$((sec + 1))
@@ -111,7 +164,7 @@ while true; do
   esac
 
   # Update weather every 8 hours
-  if [ $((sec % 28800)) -eq 0 ]; then
+  if [ $((sec % 3600)) -eq 0 ]; then
     update_weather
   fi
 
