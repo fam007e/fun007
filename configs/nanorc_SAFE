@@ -8,7 +8,7 @@ set casesensitive  # Do case-sensitive searches by default
 set constantshow   # Constantly display the cursor position
 set cutfromcursor  # Use cut-from-cursor-to-end-of-line by default
 set historylog     # Remember search/replace strings for the next session
-set linenumbers    # Display line numbers
+# set linenumbers    # Display line numbers
 set magic          # Fall back to slow libmagic to determine syntax
 set matchbrackets "(<[{)>]}" # Brackets for matching-bracket search
 set mouse          # Enable mouse support
@@ -21,13 +21,13 @@ set quickblank     # Status-bar messages disappear after 1 keystroke
 set rawsequences   # Work around mismatching terminfo terminal description
 set rebinddelete   # Fix Backspace/Delete confusion
 set regexp         # Do regular-expression searches by default
-set saveonexit     # Save a changed buffer automatically on exit
+#set saveonexit     # Save a changed buffer automatically on exit
 set showcursor     # Show cursor in file browser and help viewer
 set smarthome      # Make the Home key smarter
 set softwrap       # Spread overlong lines over multiple screen lines
 set speller "aspell -x -c" # Use aspell for spell checking
 set stateflags     # Use the end of the title bar for state flags
-set tabsize 8      # Use a tab size of 8
+set tabsize 4      # Use a tab size of 4
 set tabstospaces   # Convert typed tabs to spaces
 set trimblanks     # Snip whitespace at the end of lines
 set unix           # Save files by default in Unix format
@@ -50,7 +50,7 @@ set zero           # Use the whole terminal as edit area
 
 ## === Syntax Highlighting ===
 ## To include most of the existing syntax definitions:
-# include "/usr/share/nano/*.nanorc"
+include "/usr/share/nano/*.nanorc"
 
 ## Or select specific ones:
 # include "/usr/share/nano/html.nanorc"

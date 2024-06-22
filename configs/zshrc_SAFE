@@ -113,9 +113,11 @@ bindkey "^R" history-incremental-pattern-search-backward
 bindkey "^S" history-incremental-pattern-search-forward
 
 # Aliases
-alias ls='ls --color=auto --human-readable --group-directories-first --classify'
-alias ll='ls --color=auto --human-readable --group-directories-first --classify -l'
-alias lla='ls --color=auto --human-readable --group-directories-first --classify -la'
+alias reboot='sudo reboot +0'
+alias shutdown='sudo shutdown +0'
+#alias ls='ls --color=auto --human-readable --group-directories-first --classify'
+#alias ll='ls --color=auto --human-readable --group-directories-first --classify -l'
+#alias lla='ls --color=auto --human-readable --group-directories-first --classify -la'
 alias vim='nvim'
 alias c='clear'
 alias cp='cp -iv --reflink=auto'
@@ -137,8 +139,7 @@ alias ls='eza'
 alias ll='eza -alh'
 alias tree='eza --tree'
 alias clear-pacman-cache='sudo pacman -Sc'
-alias clear-yay-cache='yay -Sc'
-alias clear-cache='sudo pacman -Sc && yay -Sc'
+alias clear-cache='yay -Sc'
 alias passwdGEN='python3 fun007/Passwd_Generator/passwd_gen.py -c -n -s 19'
 alias rm='rm -f'
 alias rmd='rm -rf'
@@ -169,3 +170,22 @@ alias install_date='install_date=$(sudo pacman -Qi linux | grep "Install Date" |
 
 # Alias to show the last reboot time of the system
 alias last_reboot='FQDN=$(uname -n); hostname=$(echo $FQDN | cut -d. -f1); last_reboot=$(date -d @$(( $(date +%s) - $(awk '\''{print int($1)}'\'' /proc/uptime) ))); echo "The $hostname system was last rebooted on $last_reboot."'
+
+# Alias to try out your new theme using color scripts from the Color-Scripts repository
+alias random_color_script='COLOR_SCRIPT_REPO=https://api.github.com/repos/stark/Color-Scripts/contents/color-scripts; wget -q -O - $(curl -s $COLOR_SCRIPT_REPO | jq ".[] | \"\(.path) \(.download_url)\"" -r | shuf -n1 | cut -d " " -f2) | bash'
+
+# Weather using wttr
+
+# Function to get weather for a specified city
+weather() {
+  if [ -z "$1" ]; then
+    echo "Usage: weather <city>"
+  else
+    curl -s "wttr.in/$1"
+  fi
+}
+
+# Alias for quick access to weather function
+alias wttr=weather
+
+alias opwttr='~/dwm/scripts/OpWeatherinfo'

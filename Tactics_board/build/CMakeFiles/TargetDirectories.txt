@@ -1,3 +1,0 @@
-/home/fam007e/fun007/Tactics_board/build/CMakeFiles/tactics_board.dir
-/home/fam007e/fun007/Tactics_board/build/CMakeFiles/edit_cache.dir
-/home/fam007e/fun007/Tactics_board/build/CMakeFiles/rebuild_cache.dir
