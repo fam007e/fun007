@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/data/data/com.termux/files/usr/bin/env bash
 
 # Install necessary packages
 #sudo apt install -y unzip fonts-recommended fonts-ubuntu fonts-font-awesome fonts-terminus
@@ -83,9 +83,9 @@ for selection in $font_selection; do
     font=${fonts[$selection]}
     echo "Downloading and installing $font..."
     font_name=$(echo "$font" | awk '{print $1}')
-    wget -q --show-progress "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.tar.xz" -P /tmp
-    tar -xf "/tmp/$font_name.tar.xz" -C "$HOME/.local/share/fonts"
-    rm "/tmp/$font_name.tar.xz"
+    wget -q --show-progress "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font_name.tar.xz" -P $HOME/tmp
+    tar -xf "$HOME/tmp/$font_name.tar.xz" -C "$HOME/.local/share/fonts"
+    rm "$HOME/tmp/$font_name.tar.xz"
 done
 
 # Update font cache
