@@ -1,57 +1,7 @@
 #!/usr/bin/env bash
 
-# Function to detect the OS and set the package manager
-detect_os_and_set_package_manager() {
-    if [ -f /etc/os-release ]; then
-        . /etc/os-release
-        case $ID in
-            ubuntu|debian)
-                PKG_MANAGER="sudo apt-get update && sudo apt-get install -y"
-                ;;
-            fedora)
-                PKG_MANAGER="sudo dnf install -y"
-                ;;
-            centos|rhel)
-                PKG_MANAGER="sudo yum install -y"
-                ;;
-            arch)
-                PKG_MANAGER="sudo pacman -Syu --noconfirm"
-                ;;
-            *)
-                echo "Unsupported OS: $ID"
-                exit 1
-                ;;
-        esac
-    else
-        echo "OS detection failed. Please install wget and tar manually."
-        exit 1
-    fi
-}
-
-# Function to check and install dependencies
-install_dependencies() {
-    if ! command -v wget &>/dev/null; then
-        echo "wget not found. Installing wget..."
-        $PKG_MANAGER wget
-    fi
-
-    if ! command -v tar &>/dev/null; then
-        echo "tar not found. Installing tar..."
-        $PKG_MANAGER tar
-    fi
-}
-
-# Detect OS and set package manager
-detect_os_and_set_package_manager
-
-# Check and install dependencies
-install_dependencies
-
 # Create directory for fonts
 mkdir -p ~/.local/share/fonts
-
-# Create tmp directory if it doesn't exist
-mkdir -p $HOME/tmp
 
 # List of available fonts
 fonts=(
