@@ -43,8 +43,8 @@ A cryptocurrency miner for Qubic.
 ### RandNameGen
 A random name generator.
 
-### ISO_verifier
-Scripts for verifying the integrity of ISO files.
+### SRT_conv
+A subtitle converter and translator.
 
 ### wordlister
 A utility for generating word lists.
