@@ -46,6 +46,9 @@ A cryptocurrency miner for Qubic.
 ### RandNameGen
 A random name generator.
 
+### Text2PDF
+`txt2pdf` is a binary made from z-shell script that converts plain text files to PDF format. 
+
 ### ISO_verifier
 Scripts for verifying the integrity of ISO files.
 
