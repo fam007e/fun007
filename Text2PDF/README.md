@@ -2,7 +2,7 @@
 
 ## Overview
 `txt2pdf` is a binary made from z-shell script that converts plain text files to PDF format. The script allows you to specify fonts, font sizes, 
-font types, and margins for customization. It uses `enscript` and `ps2pdfwr` from `ghostescript` for the conversion process.
+font types, and margins for customization. It uses `enscript`, and `ps2pdfwr` from `ghostscript` for the conversion process.
 
 ## Dependencies
 - `enscript`: Converts text files to PostScript.
