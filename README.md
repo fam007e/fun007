@@ -16,6 +16,9 @@ A script for cleaning up directories and files.
 ### Fonts_installer
 Scripts to install various fonts easily.
 
+### Lattice_visualization_module
+A module for visualizing different types of crystal lattices and calculating the Schmid factor.
+
 ### MTU_size_optimiser
 A tool for optimizing the Maximum Transmission Unit (MTU) size on networks.
 
