@@ -1,0 +1,631 @@
+# Set the directory we want to store zinit and plugins
+ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+
+# Download Zinit, if it's not there yet
+if [ ! -d "$ZINIT_HOME" ]; then
+   mkdir -p "$(dirname $ZINIT_HOME)"
+   git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+fi
+
+# Source/Load zinit
+source "${ZINIT_HOME}/zinit.zsh"
+
+#Add in Oh-my-posh
+zinit ice depth=1; zinit light jandedobbeleer/oh-my-posh 
+
+# Add in zsh plugins
+zinit light zsh-users/zsh-syntax-highlighting
+zinit light zsh-users/zsh-completions
+zinit light zsh-users/zsh-autosuggestions
+zinit light Aloxaf/fzf-tab
+
+# Add in snippets
+zinit snippet OMZP::git
+zinit snippet OMZP::sudo
+zinit snippet OMZP::archlinux
+zinit snippet OMZP::aws
+zinit snippet OMZP::kubectl
+zinit snippet OMZP::kubectx
+zinit snippet OMZP::command-not-found
+zinit snippet OMZP::dotenv
+zinit snippet OMZP::rake
+zinit snippet OMZP::rbenv
+zinit snippet OMZP::ruby
+#zinit snippet OMZP::adb
+zinit snippet OMZP::python
+zinit snippet OMZP::rust
+zinit snippet OMZP::rvm
+zinit snippet OMZP::ssh
+zinit snippet OMZP::svn
+zinit snippet OMZP::thefuck
+zinit snippet OMZP::tmux
+zinit snippet OMZP::tldr
+zinit snippet OMZP::sdk
+zinit snippet OMZP::zoxide
+#zinit snippet OMZP::zsh-navigation-tools
+#zinit snippet OMZP::ufw
+
+# Load completions
+autoload -Uz compinit && compinit
+
+zinit cdreplay -q
+
+# History
+HISTSIZE=5000
+HISTFILE=$HOME/.zsh_history
+SAVEHIST=$HISTSIZE
+HISTDUP=erase
+setopt appendhistory
+setopt sharehistory
+setopt hist_ignore_space
+setopt hist_ignore_all_dups
+setopt hist_save_no_dups
+setopt hist_ignore_dups
+setopt hist_find_no_dups
+
+# Completion styling
+zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+zstyle ':completion:*' menu no
+zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
+zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
+
+# Shell integrations
+eval "$(fzf --zsh)"
+eval "$(zoxide init --cmd cd zsh)"
+
+# Keybindings
+bindkey -e
+bindkey '^p' history-search-backward
+bindkey '^n' history-search-forward
+bindkey '^[w' kill-region
+
+# Common Keybindings
+bindkey "^[[H" beginning-of-line # Home key
+bindkey "^[[F" end-of-line # End key
+bindkey "^[[P" delete-char # Del key
+bindkey "^[[A" history-beginning-search-backward # Up Arrow
+bindkey "^[[B" history-beginning-search-forward # Down Arrow
+bindkey "^[[1;5C" forward-word # Control + Right Arrow
+bindkey "^[[1;5D" backward-word # Control + Left Arrow
+bindkey "^H" backward-kill-word # Control + Backspace
+bindkey "^[[M" kill-word # Control + Delete
+bindkey "^[[7~" beginning-of-line # Home key
+bindkey "^[[8~" end-of-line # End key
+bindkey "^[[3~" delete-char # Del key
+bindkey "^[Oc" forward-word # Control + Right Arrow
+bindkey "^[Od" backward-word # Control + Left Arrow
+bindkey "^[[3^" kill-word # Control + Delete
+
+# Additional Keybindings
+bindkey "^R" history-incremental-pattern-search-backward
+bindkey "^S" history-incremental-pattern-search-forward
+
+# Aliases
+alias reboot='sudo reboot +0'
+alias shutdown='sudo shutdown +0'
+alias h="cat $HOME/.zsh_history | grep "
+alias ezrc='nano $HOME/.zshrc'
+alias hlp='cat $HOME/zshrc_aliases.md'
+alias vi='nvim'
+alias svi='sudo vi'
+alias vis='nvim "+set si"'
+alias vim='nvim'
+alias c='clear'
+alias cp='cp -iv --reflink=auto'
+alias rcp='rsync -v --progress'
+alias rmv='rsync -v --progress --remove-source-files'
+alias mv='mv -iv'
+alias less='less -R'
+alias ln='ln -v'
+alias chmod='chmod -c'
+alias chown='chown -c'
+alias mkdir='mkdir -v'
+alias grep='grep --colour=auto'
+#alias egrep='grep -E --colour=auto'
+alias pbcopy='xclip -selection clipboard'
+alias pbpaste='xclip -selection clipboard -o'
+alias ls='eza'
+alias ll='eza -alh'
+alias tree='eza --tree'
+alias clear-pacman-cache='sudo pacman -Sc'
+alias clear-cache='yay -Sc'
+alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
+alias rm='rm -f'
+alias rmd='rm -rf'
+alias ping='ping -c 10'
+alias x='exit'
+alias multitail='multitail --no-repeat -c'
+alias freshclam='sudo freshclam'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+alias da='date "+%Y-%m-%d %A %T %Z"'
+alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
+
+# fastfetch utils
+alias ff='fastfetch --logo-width 18 --logo-height 12 --kitty /lib64/kitty/logo/kitty-dark.png'
+
+ff-upd() {
+    cd $HOME/fastfetch || return
+    
+    output=$(git pull)
+
+    # Check if the output indicates "Already up to date."
+    if [[ $output == *"Already up to date."* ]]; then
+        echo "Fastfetch is already up to date. No need to rebuild."
+    else
+        cd $HOME/fastfetch/build || return
+        
+        # Remove all contents in the build directory
+        rm -rf *
+        
+        # Rebuild and install Fastfetch
+        cmake .. && cmake --build . --target package && sudo cmake --install . --prefix /usr/
+        
+        cd
+    fi
+}
+
+
+# egrep error escape logic
+egrep() {
+  grep -E --colour=auto "$@" 2>/dev/null
+}
+
+# Change directory aliases
+alias home='cd $HOME'
+alias cd..='cd ..'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+
+# alias chmod commands
+alias mx='chmod a+x'
+alias 000='chmod -R 000'
+alias 644='chmod -R 644'
+alias 666='chmod -R 666'
+alias 755='chmod -R 755'
+alias 777='chmod -R 777'
+
+
+
+if command -v bat > /dev/null; then
+     alias cat="bat"
+elif command -v batcat > /dev/null; then
+     alias cat="batcat"
+fi
+
+if command -v colordiff > /dev/null 2>&1; then
+    alias diff="colordiff -Nuar"
+else
+    alias diff="diff -Nuar"
+fi
+
+# Alias's for archives
+alias mktar='tar -cvf'
+alias mkbz2='tar -cvjf'
+alias mkgz='tar -cvzf'
+alias untar='tar -xvf'
+alias unbz2='tar -xvjf'
+alias ungz='tar -xvzf'
+
+# Extracts any archive(s) (if unp isn't installed)
+extract() {
+    for archive in "$@"; do
+        if [ -f "$archive" ]; then
+            case $archive in
+            *.tar.bz2) tar xvjf $archive ;;
+            *.tar.gz) tar xvzf $archive ;;
+            *.bz2) bunzip2 $archive ;;
+            *.rar) rar x $archive ;;
+            *.gz) gunzip $archive ;;
+            *.tar) tar xvf $archive ;;
+            *.tbz2) tar xvjf $archive ;;
+            *.tgz) tar xvzf $archive ;;
+            *.zip) unzip $archive ;;
+            *.Z) uncompress $archive ;;
+            *.7z) 7z x $archive ;;
+            *) echo "don't know how to extract '$archive'..." ;;
+            esac
+        else
+            echo "'$archive' is not a valid file!"
+        fi
+    done
+}
+
+# Automated encryption and decryption on file/folders
+mkcryptgz() {
+    if [[ -d "$1" ]]; then
+        tarball="${1}.tar.gz"
+        tar -czf "$tarball" "$1" && gpg --output "${tarball}.gpg" --symmetric "$tarball" && rm "$tarball"
+        if [[ $? -eq 0 ]]; then
+            echo "Directory '$1' compressed, encrypted, and original archive removed."
+        else
+            echo "Error during compression or encryption."
+        fi
+    else
+        echo "'$1' is not a valid directory!"
+    fi
+}
+
+ungpgextract() {
+    if [[ -f "$1" ]]; then
+        output_file="${1%.gpg}"
+        gpg --output "$output_file" --decrypt "$1"
+        
+        if [[ $? -eq 0 ]]; then
+            extract "$output_file"
+            if [[ $? -eq 0 ]]; then
+                rm "$output_file"
+                echo "Decrypted, extracted, and removed: $output_file"
+            else
+                echo "Extraction failed."
+            fi
+        else
+            echo "Decryption failed."
+        fi
+    else
+        echo "'$1' is not a valid file!"
+    fi
+}
+
+
+# Searches for text in all files in the current folder
+ftext() {
+    # -i case-insensitive
+    # -I ignore binary files
+    # -H causes filename to be printed
+    # -r recursive search
+    # -n causes line number to be printed
+    # optional: -F treat search term as a literal, not a regular expression
+    # optional: -l only print filenames and not the matching lines ex. grep -irl "$1" *
+    grep -iIHrn --color=always "$1" . | less -r
+}
+
+# Alias to show football fixtures
+alias ffix='$HOME/dwm/scripts/footballfix'
+
+# Finds and adds fastest mirror lists for pacman
+httpsmirrors() {
+    temp_mirrorlist=$(mktemp)
+    rate-mirrors --allow-root --protocol https arch | awk "/^# FINISHED AT:/ {p=1} p" > "$temp_mirrorlist"
+    
+    # Check if the output is non-empty
+    if [ -s "$temp_mirrorlist" ]; then
+        sudo tee /etc/pacman.d/mirrorlist < "$temp_mirrorlist"
+        echo "Mirrorlist updated successfully."
+    else
+        echo "Failed to update mirrorlist. Retaining the previous list."
+    fi
+    
+    rm -f "$temp_mirrorlist"
+}
+
+# Alias to show all established connections and their resolved names
+alias show_connections='sudo netstat -tupn | grep "ESTABLISHED" | awk '\''{print $5}'\'' | cut -d: -f1 | sort | uniq | xargs -I {} sh -c '\''echo -n "{}: "; nslookup {}'\'' | grep "name ="'
+
+# Alias to show the external NAT’ed IP
+alias external_ip='IP=$(curl -s https://api.ipify.org) && echo "This is your External IP address $IP."'
+
+# Alias to show the installation date of the system
+alias install_date='install_date=$(sudo pacman -Qi linux | grep "Install Date" | cut -d ":" -f2 | xargs) && echo "Your computer was installed on $install_date."'
+
+# Alias to show the last reboot time of the system
+alias last_reboot='FQDN=$(uname -n); hostname=$(echo $FQDN | cut -d. -f1); last_reboot=$(date -d @$(( $(date +%s) - $(awk '\''{print int($1)}'\'' /proc/uptime) ))); echo "The $hostname system was last rebooted on $last_reboot."'
+
+# Alias to try out your new theme using color scripts from the Color-Scripts repository
+alias random_color_script='COLOR_SCRIPT_REPO=https://api.github.com/repos/stark/Color-Scripts/contents/color-scripts; wget -q -O - $(curl -s $COLOR_SCRIPT_REPO | jq ".[] | \"\(.path) \(.download_url)\"" -r | shuf -n1 | cut -d " " -f2) | bash'
+
+# Weather using wttr
+
+# Function to get weather for a specified city
+weather() {
+  if [ -z "$1" ]; then
+    echo "Usage: weather <city>"
+  else
+    curl -s "wttr.in/$1"
+  fi
+}
+
+# Alias for quick access to weather function
+alias wttr=weather
+
+alias opwttr='$HOME/dwm/scripts/OpWeatherinfo'
+
+# IP address lookup
+alias whatismyip="whatsmyip"
+function whatsmyip ()
+{
+    # Internal IP Lookup.
+    if [ -e /usr/bin/ip ]; then
+        echo -n "Internal IP: "
+        /usr/bin/ip addr show wlp0s20f3 | grep "inet " | awk -F: '{print $1}' | awk '{print $2}'
+    else
+        echo -n "Internal IP: "
+        /usr/bin/ifconfig wlp0s20f3 | grep "inet " | awk -F: '{print $1} |' | awk '{print $2}'
+    fi
+
+    # External IP Lookup
+    echo -n "External IP: "
+    curl -s ifconfig.me
+}
+
+# Search running processes
+alias p="ps aux | grep "
+alias topcpu="/bin/ps -eo pcpu,pid,user,args | sort -k 1 -r | head -10"
+
+# Search files in the current folder
+alias f="find . | grep "
+
+# Count all files (recursively) in the current folder
+alias countfiles="for t in files links directories; do echo \`find . -type \${t:0:1} | wc -l\` \$t; done 2> /dev/null"
+
+# To see if a command is aliased, a file, or a built-in command
+alias checkcommand="type -t"
+
+# Show open ports
+alias openports='netstat -nape --inet'
+
+# Alias's to show disk space and space used in a folder
+alias diskspace="du -S | sort -n -r |more"
+alias folders='du -h --max-depth=1'
+alias folderssort='find . -maxdepth 1 -type d -print0 | xargs -0 du -sk | sort -rn'
+alias treed='tree -CAFd'
+alias mountedinfo='df -hT'
+
+# Show all logs in /var/log
+alias logs="sudo find /var/log -type f -exec file {} \; | grep 'text' | cut -d' ' -f1 | sed -e's/:$//g' | grep -v '[0-9]$' | xargs sudo tail -f"
+
+# SHA1
+alias sha1='openssl sha1'
+
+alias clickpaste='sleep 3; xdotool type "$(xclip -o -selection clipboard)"'
+
+# KITTY - alias to be able to use kitty features when connecting to remote servers(e.g use tmux on remote server)
+
+alias kssh="kitty +kitten ssh"
+
+
+# Copy file with a progress bar
+cpp() {
+    set -e
+    strace -q -ewrite cp -- "${1}" "${2}" 2>&1 |
+        awk '{
+    count += $NF
+    if (count % 10 == 0) {
+        percent = count / total_size * 100
+        printf "%3d%% [", percent
+        for (i=0;i<=percent;i++)
+            printf "="
+            printf ">"
+            for (i=percent;i<100;i++)
+                printf " "
+                printf "]\r"
+            }
+        }
+    END { print "" }' total_size="$(stat -c '%s' "${1}")" count=0
+}
+
+# Copy and go to the directory
+cpg() {
+    if [ -d "$2" ]; then
+        cp "$1" "$2" && cd "$2"
+    else
+        cp "$1" "$2"
+    fi
+}
+
+# Move and go to the directory
+mvg() {
+    if [ -d "$2" ]; then
+        mv "$1" "$2" && cd "$2"
+    else
+        mv "$1" "$2"
+    fi
+}
+
+# Create and go to the directory
+mkdirg() {
+    mkdir -p "$1"
+    cd "$1"
+}
+
+# Goes up a specified number of directories  (i.e. up 4)
+up() {
+    local d=""
+    limit=$1
+    for ((i = 1; i <= limit; i++)); do
+        d=$d/..
+    done
+    d=$(echo $d | sed 's/^\///')
+    if [ -z "$d" ]; then
+        d=..
+    fi
+    cd $d
+}
+
+# Returns the last 2 fields of the working directory
+pwdtail() {
+    pwd | awk -F/ '{nlast = NF -1;print $nlast"/"$NF}'
+}
+
+# Show the current distribution
+distribution ()
+{
+    local dtype="unknown"  # Default to unknown
+
+    # Use /etc/os-release for modern distro identification
+    if [ -r /etc/os-release ]; then
+        source /etc/os-release
+        case $ID in
+            fedora|rhel|centos)
+                dtype="redhat"
+                ;;
+            sles|opensuse*)
+                dtype="suse"
+                ;;
+            ubuntu|debian)
+                dtype="debian"
+                ;;
+            gentoo)
+                dtype="gentoo"
+                ;;
+            arch)
+                dtype="arch"
+                ;;
+            slackware)
+                dtype="slackware"
+                ;;
+            *)
+                # If ID is not recognized, keep dtype as unknown
+                ;;
+        esac
+    fi
+
+    echo $dtype
+}
+
+# Show the current version of the operating system
+ver() {
+    local dtype
+    dtype=$(distribution)
+
+    case $dtype in
+        "redhat")
+            if [ -s /etc/redhat-release ]; then
+                cat /etc/redhat-release
+            else
+                cat /etc/issue
+            fi
+            uname -a
+            ;;
+        "suse")
+            cat /etc/SuSE-release
+            ;;
+        "debian")
+            lsb_release -a
+            ;;
+        "gentoo")
+            cat /etc/gentoo-release
+            ;;
+        "arch")
+            cat /etc/os-release
+            ;;
+        "slackware")
+            cat /etc/slackware-version
+            ;;
+        *)
+            if [ -s /etc/issue ]; then
+                cat /etc/issue
+            else
+                echo "Error: Unknown distribution"
+                exit 1
+            fi
+            ;;
+    esac
+}
+
+# View Apache logs
+apachelog() {
+    if [ -f /etc/httpd/conf/httpd.conf ]; then
+        cd /var/log/httpd && ls -xAh && multitail --no-repeat -c -s 2 /var/log/httpd/*_log
+    else
+        cd /var/log/apache2 && ls -xAh && multitail --no-repeat -c -s 2 /var/log/apache2/*.log
+    fi
+}
+
+# Edit the Apache configuration
+apacheconfig() {
+    if [ -f /etc/httpd/conf/httpd.conf ]; then
+        nano /etc/httpd/conf/httpd.conf
+    elif [ -f /etc/apache2/apache2.conf ]; then
+        nano /etc/apache2/apache2.conf
+    else
+        echo "Error: Apache config file could not be found."
+        echo "Searching for possible locations:"
+        sudo updatedb && locate httpd.conf && locate apache2.conf
+    fi
+}
+
+# Edit the PHP configuration file
+phpconfig() {
+    if [ -f /etc/php.ini ]; then
+        nano /etc/php.ini
+    elif [ -f /etc/php/php.ini ]; then
+        nano /etc/php/php.ini
+    elif [ -f /etc/php5/php.ini ]; then
+        nano /etc/php5/php.ini
+    elif [ -f /usr/bin/php5/bin/php.ini ]; then
+        nano /usr/bin/php5/bin/php.ini
+    elif [ -f /etc/php5/apache2/php.ini ]; then
+        nano /etc/php5/apache2/php.ini
+    else
+        echo "Error: php.ini file could not be found."
+        echo "Searching for possible locations:"
+        sudo updatedb && locate php.ini
+    fi
+}
+
+# Edit the MySQL configuration file
+mysqlconfig() {
+    if [ -f /etc/my.cnf ]; then
+        nano /etc/my.cnf
+    elif [ -f /etc/mysql/my.cnf ]; then
+        nano /etc/mysql/my.cnf
+    elif [ -f /usr/local/etc/my.cnf ]; then
+        nano /usr/local/etc/my.cnf
+    elif [ -f /usr/bin/mysql/my.cnf ]; then
+        nano /usr/bin/mysql/my.cnf
+    elif [ -f $HOME/my.cnf ]; then
+        nano $HOME/my.cnf
+    elif [ -f $HOME/.my.cnf ]; then
+        nano $HOME/.my.cnf
+    else
+        echo "Error: my.cnf file could not be found."
+        echo "Searching for possible locations:"
+        sudo updatedb && locate my.cnf
+    fi
+}
+
+
+# Trim leading and trailing spaces (for scripts)
+trim() {
+    local var=$*
+    var="${var#"${var%%[![:space:]]*}"}" # remove leading whitespace characters
+    var="${var%"${var##*[![:space:]]}"}" # remove trailing whitespace characters
+    echo -n "$var"
+}
+
+# GitHub Additions
+
+gcom() {
+    git add .
+    git commit -m "$1"
+}
+
+lazyg() {
+    git add .
+    git commit -m "$1"
+    git push
+}
+
+# Function to switch to Cloudflare DNS
+cloudflare_dns() {
+    echo -e "nameserver 1.1.1.2\nnameserver 1.0.0.2" | sudo tee /etc/resolv.conf > /dev/null
+    echo "Switched to Cloudflare DNS"
+}
+
+# Function to switch to Quad9 DNS
+quad9_dns() {
+    echo -e "nameserver 9.9.9.11\nnameserver 149.112.112.11" | sudo tee /etc/resolv.conf > /dev/null
+    echo "Switched to Quad9 DNS"
+}
+
+
+export PATH="$PATH:$HOME/Github/metasploit-framework"
+export PATH="$PATH:$HOME/.local/share/gem/ruby/3.0.0/bin"
+export PATH=$HOME/.local/bin:$PATH
+export PATH=$HOME/.cargo/bin:$PATH
+alias msfconsole="pushd $HOME/Github/metasploit-framework && ./msfconsole && popd"
+
+eval "$(oh-my-posh init zsh --config $HOME/.cache/oh-my-posh/themes/illusi0n_mod.omp.json)"

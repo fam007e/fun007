@@ -1,0 +1,42 @@
+name: Attest Build Provenance
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  attest:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download build artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: my-artifacts
+
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+
+    - name: Generate Build Provenance
+      uses: actions/attest-build-provenance/predicate@f1185f1959cdaeda41a7f5a7b43cbe6b58a7a793
+      id: generate-build-provenance-predicate
+
+    - name: Attest Build
+      uses: actions/attest@67422f5511b7ff725f4dbd6fb9bd2cd925c65a8d
+      with:
+        subject-path: 'dist/my_package-1.0.0.tar.gz'
+        subject-digest: 'sha256:your_digest_here'
+        subject-name: 'my_package:1.0.0'
+        push-to-registry: true
+        show-summary: true
+        github-token: ${{ secrets.GITHUB_TOKEN }}
