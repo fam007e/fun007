@@ -11,9 +11,6 @@ The script allows the user to securely wipe drives, set up encryption with Btrfs
 packages, and set up the user environment. The script also includes options for selecting the appropriate microcode package
 based on the CPU (Intel or AMD).
 
-### ChessPizs
-A project focused on creating and analyzing chess puzzles.
-
 ### configs
 A collection of configuration files for various tools and applications.
 
