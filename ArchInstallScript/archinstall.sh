@@ -64,27 +64,25 @@ background_checks() {
 }
 
 select_option() {
-    local options="$@"
-    local num_options=$(echo "$options" | wc -w)
+    local options=("$@")
+    local num_options=${#options[@]}
     local selected=0
     local last_selected=-1
 
     while true; do
-        if [ $last_selected -ne -1 ]; then
+        if [ "$last_selected" -ne -1 ]; then
             printf "\033[%sA" "$num_options"
         fi
 
-        if [ $last_selected -eq -1 ]; then
+        if [ "$last_selected" -eq -1 ]; then
             printf "%b\n" "Please select an option using the arrow keys and Enter:"
         fi
-        i=0
-        for option in $options; do
-            if [ $i -eq $selected ]; then
-                printf "> %s\n" "$option"
+        for i in "${!options[@]}"; do
+            if [ "$i" -eq "$selected" ]; then
+                printf "> %s\n" "${options[$i]}"
             else
-                printf "  %s\n" "$option"
+                printf "  %s\n" "${options[$i]}"
             fi
-            i=$((i + 1))
         done
 
         last_selected=$selected
@@ -93,13 +91,13 @@ select_option() {
         case $key in
             A) # Up arrow
                 selected=$((selected - 1))
-                if [ $selected -lt 0 ]; then
+                if [ "$selected" -lt 0 ]; then
                     selected=$((num_options - 1))
                 fi
                 ;;
             B) # Down arrow
                 selected=$((selected + 1))
-                if [ $selected -ge $num_options ]; then
+                if [ "$selected" -ge "$num_options" ]; then
                     selected=0
                 fi
                 ;;
@@ -109,7 +107,7 @@ select_option() {
         esac
     done
 
-    return $selected
+    return "$selected"
 }
 
 logo() {
@@ -131,8 +129,8 @@ filesystem() {
     printf "%b\n" "
     Please Select your file system for both boot and root
     "
-    options="btrfs ext4 luks exit"
-    select_option $options
+    options=("btrfs" "ext4" "luks" "exit")
+    select_option "${options[@]}"
 
     case $? in
     0) FS=btrfs;;
@@ -166,8 +164,8 @@ timezone() {
     printf "%b\n" "
     System detected your timezone to be '$time_zone'"
     printf "%b\n" "Is this correct?"
-    options="Yes No"
-    select_option $options
+    options=("Yes" "No")
+    select_option "${options[@]}"
 
     case $? in
         0)
@@ -185,8 +183,8 @@ timezone() {
 keymap() {
     printf "%b\n" "
     Please select keyboard layout from this list"
-    options="us by ca cf cz de dk es et fa fi fr gr hu il it lt lv mk nl no pl ro ru se sg ua uk"
-    select_option $options
+    options=("us" "by" "ca" "cf" "cz" "de" "dk" "es" "et" "fa" "fi" "fr" "gr" "hu" "il" "it" "lt" "lv" "mk" "nl" "no" "pl" "ro" "ru" "se" "sg" "ua" "uk")
+    select_option "${options[@]}"
     keymap=${options[$?]}
 
     printf "%b\n" "Your keyboard layout: ${keymap}"
@@ -198,8 +196,8 @@ drivessd() {
     Is this an ssd? yes/no:
     "
 
-    options="Yes No"
-    select_option $options
+    options=("Yes" "No")
+    select_option "${options[@]}"
 
     case $? in
         0) MOUNT_OPTIONS="noatime,compress=zstd,ssd,commit=120";;
@@ -213,9 +211,9 @@ select_secondary_disk() {
     Select the secondary disk (HDD) for user directories:
     "
     PS3='Select the disk: '
-    options=$(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk" && $2!="'"${DISK#/dev/}"'" {print "/dev/"$2"|"$3}')
-    select_option $options
-    secondary_disk=${options[$?]%|*}
+    mapfile -t disk_options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk" && $2!="'"${DISK#/dev/}"'" {print "/dev/"$2"|"$3}')
+    select_option "${disk_options[@]}"
+    secondary_disk=${disk_options[$?]%|*}
     SECONDARY_DISK=${secondary_disk%|*}
 }
 
@@ -231,10 +229,9 @@ diskpart() {
 
     PS3='
     Select the disk to install on: '
-    options=$(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{print "/dev/"$2"|"$3}')
-
-    select_option $options
-    disk=${options[$?]%|*}
+    mapfile -t disk_options < <(lsblk -n --output TYPE,KNAME,SIZE | awk '$1=="disk"{print "/dev/"$2"|"$3}')
+    select_option "${disk_options[@]}"
+    disk=${disk_options[$?]%|*}
 
     printf "%b\n" "\n${disk%|*} selected \n"
     DISK=${disk%|*}
@@ -242,8 +239,8 @@ diskpart() {
     printf "%b\n" "
     Do you want to use a secondary disk (HDD) for user directories?
     "
-    options="Yes No"
-    select_option $options
+    options=("Yes" "No")
+    select_option "${options[@]}"
     case $? in
         0) 
             select_secondary_disk
@@ -254,6 +251,7 @@ diskpart() {
             ;;
     esac
 }
+
 
 userinfo() {
     while true
@@ -307,8 +305,8 @@ choose_kernel() {
     printf "%b\n" "
     Please select the kernel you want to install:
     "
-    options="linux-lts linux"
-    select_option $options
+    options=("linux-lts" "linux")
+    select_option "${options[@]}"
     case $? in
     0) KERNEL="linux-lts";;
     1) KERNEL="linux";;
@@ -505,7 +503,7 @@ fi
 
 gpu_type=$(lspci | grep -E "VGA|3D|Display")
 
-arch-chroot /mnt /bin/sh <<EOF
+arch-chroot /mnt /bin/bash <<EOF
 printf "%b\n" "
 ----------------------------------------------------------------------------------------------------------------------
                                                 Network Setup 
@@ -798,3 +796,17 @@ if [ "${FS}" = "luks" ] && [ -n "$SECONDARY_DISK" ]; then
     SECONDARY_UUID=$(blkid -s UUID -o value "${SECONDARY_DISK}")
     printf "%s\n" "DATA UUID=${SECONDARY_UUID} none luks" >> /mnt/etc/crypttab
 fi
+
+printf "%b\n" "
+----------------------------------------------------------------------------------------------------------------------
+                                               Installation Complete!
+----------------------------------------------------------------------------------------------------------------------
+"
+
+# Unmount all partitions
+umount -R /mnt
+
+# Reboot
+printf "%b\n" "System will reboot in 5 seconds..."
+sleep 5
+reboot
