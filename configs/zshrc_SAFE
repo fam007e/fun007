@@ -137,7 +137,7 @@ alias ping='ping -c 10'
 alias x='exit'
 alias multitail='multitail --no-repeat -c'
 alias freshclam='sudo freshclam'
-alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && printf terminal || printf error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 alias da='date "+%Y-%m-%d %A %T %Z"'
 alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
 
@@ -151,7 +151,8 @@ ff-upd() {
 
     # Check if the output indicates "Already up to date."
     if [[ $output == *"Already up to date."* ]]; then
-        echo "Fastfetch is already up to date. No need to rebuild."
+        printf "Fastfetch is already up to date. No need to rebuild.\n"
+        cd
     else
         cd $HOME/fastfetch/build || return
         
@@ -225,10 +226,10 @@ extract() {
             *.zip) unzip $archive ;;
             *.Z) uncompress $archive ;;
             *.7z) 7z x $archive ;;
-            *) echo "don't know how to extract '$archive'..." ;;
+            *) printf "don't know how to extract '%s'...\n" "$archive" ;;
             esac
         else
-            echo "'$archive' is not a valid file!"
+            printf "'%s' is not a valid file!\n" "$archive"
         fi
     done
 }
@@ -239,12 +240,12 @@ mkcryptgz() {
         tarball="${1}.tar.gz"
         tar -czf "$tarball" "$1" && gpg --output "${tarball}.gpg" --symmetric "$tarball" && rm "$tarball"
         if [[ $? -eq 0 ]]; then
-            echo "Directory '$1' compressed, encrypted, and original archive removed."
+            printf "Directory '%s' compressed, encrypted, and original archive removed.\n" "$1"
         else
-            echo "Error during compression or encryption."
+            printf "Error during compression or encryption.\n"
         fi
     else
-        echo "'$1' is not a valid directory!"
+        printf "'%s' is not a valid directory!\n" "$1"
     fi
 }
 
@@ -257,15 +258,15 @@ ungpgextract() {
             extract "$output_file"
             if [[ $? -eq 0 ]]; then
                 rm "$output_file"
-                echo "Decrypted, extracted, and removed: $output_file"
+                printf "Decrypted, extracted, and removed: %s\n" "$output_file"
             else
-                echo "Extraction failed."
+                printf "Extraction failed.\n"
             fi
         else
-            echo "Decryption failed."
+            printf "Decryption failed.\n"
         fi
     else
-        echo "'$1' is not a valid file!"
+        printf "'%s' is not a valid file!\n" "$1"
     fi
 }
 
@@ -293,43 +294,30 @@ httpsmirrors() {
     # Check if the output is non-empty
     if [ -s "$temp_mirrorlist" ]; then
         sudo tee /etc/pacman.d/mirrorlist < "$temp_mirrorlist"
-        echo "Mirrorlist updated successfully."
+        printf "Mirrorlist updated successfully.\n"
     else
-        echo "Failed to update mirrorlist. Retaining the previous list."
+        printf "Failed to update mirrorlist. Retaining the previous list.\n"
     fi
     
     rm -f "$temp_mirrorlist"
 }
 
 # Alias to show all established connections and their resolved names
-alias show_connections='sudo netstat -tupn | grep "ESTABLISHED" | awk '\''{print $5}'\'' | cut -d: -f1 | sort | uniq | xargs -I {} sh -c '\''echo -n "{}: "; nslookup {}'\'' | grep "name ="'
+alias show_connections='sudo netstat -tupn | grep "ESTABLISHED" | awk '\''{print $5}'\'' | cut -d: -f1 | sort | uniq | xargs -I {} sh -c '\''printf "%s: " "{}"; nslookup {}'\'' | grep "name ="'
 
-# Alias to show the external NAT’ed IP
-alias external_ip='IP=$(curl -s https://api.ipify.org) && echo "This is your External IP address $IP."'
+# Alias to show the external NAT'ed IP
+alias external_ip='IP=$(curl -s https://api.ipify.org) && printf "This is your External IP address %s.\n" "$IP"'
 
 # Alias to show the installation date of the system
-alias install_date='install_date=$(sudo pacman -Qi linux | grep "Install Date" | cut -d ":" -f2 | xargs) && echo "Your computer was installed on $install_date."'
+alias install_date='install_date=$(sudo pacman -Qi linux | grep "Install Date" | cut -d ":" -f2 | xargs) && printf "Your computer was installed on %s.\n" "$install_date"'
 
 # Alias to show the last reboot time of the system
-alias last_reboot='FQDN=$(uname -n); hostname=$(echo $FQDN | cut -d. -f1); last_reboot=$(date -d @$(( $(date +%s) - $(awk '\''{print int($1)}'\'' /proc/uptime) ))); echo "The $hostname system was last rebooted on $last_reboot."'
+alias last_reboot='FQDN=$(uname -n); hostname=$(printf "%s" "$FQDN" | cut -d. -f1); last_reboot=$(date -d @$(( $(date +%s) - $(awk '\''{print int($1)}'\'' /proc/uptime) ))); printf "The %s system was last rebooted on %s.\n" "$hostname" "$last_reboot"'
 
 # Alias to try out your new theme using color scripts from the Color-Scripts repository
 alias random_color_script='COLOR_SCRIPT_REPO=https://api.github.com/repos/stark/Color-Scripts/contents/color-scripts; wget -q -O - $(curl -s $COLOR_SCRIPT_REPO | jq ".[] | \"\(.path) \(.download_url)\"" -r | shuf -n1 | cut -d " " -f2) | bash'
 
-# Weather using wttr
-
-# Function to get weather for a specified city
-weather() {
-  if [ -z "$1" ]; then
-    echo "Usage: weather <city>"
-  else
-    curl -s "wttr.in/$1"
-  fi
-}
-
-# Alias for quick access to weather function
-alias wttr=weather
-
+# Alias for quick access to weather
 alias opwttr='$HOME/dwm/scripts/OpWeatherinfo'
 
 # IP address lookup
@@ -338,16 +326,16 @@ function whatsmyip ()
 {
     # Internal IP Lookup.
     if [ -e /usr/bin/ip ]; then
-        echo -n "Internal IP: "
+        printf "Internal IP: "
         /usr/bin/ip addr show wlp0s20f3 | grep "inet " | awk -F: '{print $1}' | awk '{print $2}'
     else
-        echo -n "Internal IP: "
+        printf "Internal IP: "
         /usr/bin/ifconfig wlp0s20f3 | grep "inet " | awk -F: '{print $1} |' | awk '{print $2}'
     fi
 
     # External IP Lookup
-    echo -n "External IP: "
-    curl -s ifconfig.me
+    printf "External IP: "
+    printf "%s\n" "$(curl -s ifconfig.me)"
 }
 
 # Search running processes
@@ -358,7 +346,7 @@ alias topcpu="/bin/ps -eo pcpu,pid,user,args | sort -k 1 -r | head -10"
 alias f="find . | grep "
 
 # Count all files (recursively) in the current folder
-alias countfiles="for t in files links directories; do echo \`find . -type \${t:0:1} | wc -l\` \$t; done 2> /dev/null"
+alias countfiles="for t in files links directories; do printf \"%s %s\n\" \"\$(find . -type \${t:0:1} | wc -l)\" \"\$t\"; done 2> /dev/null"
 
 # To see if a command is aliased, a file, or a built-in command
 alias checkcommand="type -t"
@@ -403,7 +391,7 @@ cpp() {
                 printf "]\r"
             }
         }
-    END { print "" }' total_size="$(stat -c '%s' "${1}")" count=0
+    END { printf "\n" }' total_size="$(stat -c '%s' "${1}")" count=0
 }
 
 # Copy and go to the directory
@@ -437,7 +425,7 @@ up() {
     for ((i = 1; i <= limit; i++)); do
         d=$d/..
     done
-    d=$(echo $d | sed 's/^\///')
+    d=$(printf "%s" "$d" | sed 's/^\///')
     if [ -z "$d" ]; then
         d=..
     fi
@@ -482,7 +470,7 @@ distribution ()
         esac
     fi
 
-    echo $dtype
+    printf "%s\n" "$dtype"
 }
 
 # Show the current version of the operating system
@@ -518,7 +506,7 @@ ver() {
             if [ -s /etc/issue ]; then
                 cat /etc/issue
             else
-                echo "Error: Unknown distribution"
+                printf "Error: Unknown distribution\n"
                 exit 1
             fi
             ;;
@@ -541,8 +529,8 @@ apacheconfig() {
     elif [ -f /etc/apache2/apache2.conf ]; then
         nano /etc/apache2/apache2.conf
     else
-        echo "Error: Apache config file could not be found."
-        echo "Searching for possible locations:"
+        printf "Error: Apache config file could not be found.\n"
+        printf "Searching for possible locations:\n"
         sudo updatedb && locate httpd.conf && locate apache2.conf
     fi
 }
@@ -560,8 +548,8 @@ phpconfig() {
     elif [ -f /etc/php5/apache2/php.ini ]; then
         nano /etc/php5/apache2/php.ini
     else
-        echo "Error: php.ini file could not be found."
-        echo "Searching for possible locations:"
+        printf "Error: php.ini file could not be found.\n"
+        printf "Searching for possible locations:\n"
         sudo updatedb && locate php.ini
     fi
 }
@@ -581,8 +569,8 @@ mysqlconfig() {
     elif [ -f $HOME/.my.cnf ]; then
         nano $HOME/.my.cnf
     else
-        echo "Error: my.cnf file could not be found."
-        echo "Searching for possible locations:"
+        printf "Error: my.cnf file could not be found.\n"
+        printf "Searching for possible locations:\n"
         sudo updatedb && locate my.cnf
     fi
 }
@@ -593,7 +581,7 @@ trim() {
     local var=$*
     var="${var#"${var%%[![:space:]]*}"}" # remove leading whitespace characters
     var="${var%"${var##*[![:space:]]}"}" # remove trailing whitespace characters
-    echo -n "$var"
+    printf "%s" "$var"
 }
 
 # GitHub Additions
@@ -611,14 +599,75 @@ lazyg() {
 
 # Function to switch to Cloudflare DNS
 cloudflare_dns() {
-    echo -e "nameserver 1.1.1.2\nnameserver 1.0.0.2" | sudo tee /etc/resolv.conf > /dev/null
-    echo "Switched to Cloudflare DNS"
+    printf "nameserver 1.1.1.2\nnameserver 1.0.0.2\n" | sudo tee /etc/resolv.conf > /dev/null
+    printf "Switched to Cloudflare DNS\n"
 }
 
 # Function to switch to Quad9 DNS
 quad9_dns() {
-    echo -e "nameserver 9.9.9.11\nnameserver 149.112.112.11" | sudo tee /etc/resolv.conf > /dev/null
-    echo "Switched to Quad9 DNS"
+    printf "nameserver 9.9.9.11\nnameserver 149.112.112.11\n" | sudo tee /etc/resolv.conf > /dev/null
+    printf "Switched to Quad9 DNS\n"
+}
+
+dwn_iso() {
+    local iso_dir="$HOME/Downloads/ISO"
+    mkdir -p "$iso_dir"
+    
+    # Arch Linux URLs (primary and fallback)
+    local arch_url_base1="https://mirror.rackspace.com/archlinux/iso/latest/"
+    local arch_url_base2="https://geo.mirror.pkgbuild.com/iso/latest/"
+    
+    # Tails base URL
+    local tails_url_base="https://mirrors.edge.kernel.org/tails/stable/"
+
+    # Function to download Arch Linux ISO
+    download_arch_iso() {
+        local arch_latest_ver=$(curl -sL "${arch_url_base1}" | grep -oP 'archlinux-\K[0-9]{4}\.[0-9]{2}\.[0-9]{2}' | head -n 1)
+        local iso_filename="archlinux-${arch_latest_ver}-x86_64.iso"
+        
+        # Check if the ISO already exists
+        if [ -f "$iso_dir/$iso_filename" ]; then
+            echo "Arch ISO is already the latest version: $iso_filename"
+        else
+            # Download from primary and fallback if necessary
+            if ! curl -o "$iso_dir/$iso_filename" "${arch_url_base1}${iso_filename}"; then
+                echo "Primary Arch URL failed, attempting fallback..."
+                curl -o "$iso_dir/$iso_filename" "${arch_url_base2}${iso_filename}"
+            fi
+
+            # Download the verification files
+            curl -o "$iso_dir/sha256sums.txt" "${arch_url_base1}sha256sums.txt" || curl -o "$iso_dir/sha256sums.txt" "${arch_url_base2}sha256sums.txt"
+            curl -o "$iso_dir/b2sums.txt" "${arch_url_base1}b2sums.txt" || curl -o "$iso_dir/b2sums.txt" "${arch_url_base2}b2sums.txt"
+            curl -o "$iso_dir/${iso_filename}.sig" "${arch_url_base1}${iso_filename}.sig" || curl -o "$iso_dir/${iso_filename}.sig" "${arch_url_base2}${iso_filename}.sig"
+
+            # Run ISO verification script
+            sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
+        fi
+    }
+
+    # Function to download Tails ISO
+    download_tails_iso() {
+        local tails_latest_ver=$(curl -sL "${tails_url_base}" | grep -oP 'tails-amd64-\K[0-9]+\.[0-9]+\.[0-9]+' | sort -V | tail -n 1)
+        local iso_filename="tails-amd64-${tails_latest_ver}.iso"
+        
+        # Check if the ISO already exists
+        if [ -f "$iso_dir/$iso_filename" ]; then
+            echo "Tails ISO is already the latest version: $iso_filename"
+        else
+            # Download the ISO and .sig file
+            curl -o "$iso_dir/$iso_filename" "${tails_url_base}tails-amd64-${tails_latest_ver}/$iso_filename"
+            curl -o "$iso_dir/$iso_filename.sig" "${tails_url_base}tails-amd64-${tails_latest_ver}/$iso_filename.sig"
+
+            # Run ISO verification script (only GPG signature)
+            sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
+        fi
+    }
+
+    # Main logic
+    echo "Checking for new Arch and Tails ISO versions..."
+
+    download_arch_iso
+    download_tails_iso
 }
 
 
