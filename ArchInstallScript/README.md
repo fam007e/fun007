@@ -1,6 +1,6 @@
 # Automated Arch Linux Installer
 
-This project provides an automated installation process for Arch Linux, with support for various configurations including Btrfs, ext4, and LUKS encryption. It now features both an interactive and a non-interactive installation method.
+This project provides an automated installation process for Arch Linux, with support for various configurations including Btrfs, ext4, and LUKS encryption. It now features both a fully interactive and a semi-interactive installation method.
 
 ## Features
 
@@ -13,8 +13,8 @@ This project provides an automated installation process for Arch Linux, with sup
 - Customizable username, password, and hostname
 - Automatic timezone and keyboard layout detection
 - GRUB bootloader installation and theming
-- New: Interactive configuration generation
-- New: Non-interactive installation using JSON configuration
+- New: Configuration file generation for semi-interactive installation
+- New: Semi-interactive installation using JSON configuration
 
 ## Prerequisites
 
@@ -24,24 +24,24 @@ This project provides an automated installation process for Arch Linux, with sup
 
 ## Usage
 
-### Interactive Installation
+### Fully Interactive Installation (Original Method)
 
 1. Boot into the Arch Linux live environment
-2. Download the interactive installation script:
+2. Download the fully interactive installation script:
    ```
-   curl -O https://raw.githubusercontent.com/fam007e/fun007/master/ArchInstallScript/Interactive_install/archinstall_interactive.sh
+   curl -O https://raw.githubusercontent.com/fam007e/fun007/master/ArchInstallScript/archinstall.sh
    ```
 3. Make the script executable:
    ```
-   chmod +x archinstall_interactive.sh
+   chmod +x archinstall.sh
    ```
 4. Run the script:
    ```
-   ./archinstall_interactive.sh
+   ./archinstall.sh
    ```
 5. Follow the on-screen prompts to configure your installation
 
-### Non-Interactive Installation
+### Semi-Interactive Installation (New Method)
 
 1. Generate a configuration file:
    ```
@@ -49,13 +49,13 @@ This project provides an automated installation process for Arch Linux, with sup
    chmod +x generate_config.sh
    ./generate_config.sh
    ```
-2. Download the main installation script:
+2. Download the semi-interactive installation script:
    ```
-   curl -O https://raw.githubusercontent.com/fam007e/fun007/master/ArchInstallScript/archinstall.sh
+   curl -O https://raw.githubusercontent.com/fam007e/fun007/master/ArchInstallScript/Interactive_install/archinstall_config.sh
    ```
 3. Make the script executable:
    ```
-   chmod +x archinstall.sh
+   chmod +x archinstall_config.sh
    ```
 4. Set the necessary environment variables:
    ```
@@ -64,7 +64,7 @@ This project provides an automated installation process for Arch Linux, with sup
    ```
 5. Run the installation script with the generated config:
    ```
-   ./archinstall.sh config.json
+   ./archinstall_config.sh config.json
    ```
 
 ## Customization
@@ -89,6 +89,6 @@ This Arch Linux automated installation script is adapted from the work of [Chris
 
 Special thanks to Chris Titus for providing a comprehensive and flexible installation script that has been a valuable reference for creating this version with added support for Btrfs and LUKS encryption.
 
-Additional improvements and the new interactive/non-interactive approach were inspired by suggestions from [J_H on Stack Exchange](https://codereview.stackexchange.com/users/145459/j-h). We greatly appreciate their valuable input and recommendations for enhancing the script's functionality and user experience.
+Additional improvements and the new semi-interactive approach were inspired by suggestions from [J_H on Stack Exchange](https://codereview.stackexchange.com/users/145459/j-h). We greatly appreciate their valuable input and recommendations for enhancing the script's functionality and user experience.
 
 For more information and contributions, please visit [Chris Titus Tech's GitHub](https://github.com/ChrisTitusTech).
