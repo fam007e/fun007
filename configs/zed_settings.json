@@ -1,0 +1,84 @@
+{
+  "features": {
+    "inline_completion_provider": "supermaven"
+  },
+  "assistant": {
+    "default_model": {
+      "provider": "zed.dev",
+      "model": "claude-3-5-sonnet-20240620"
+    },
+    "enabled": true,
+    "version": "2"
+  },
+  "auto_update": true,
+  "ui_font_size": 15,
+  "buffer_font_family": "Fira Code",
+  "buffer_font_weight": 500,
+  "buffer_font_features": {
+    "calt": false
+  },
+  "buffer_font_size": 14,
+  "autosave": {
+    "after_delay": {
+      "milliseconds": 1000
+    }
+  },
+  "theme": {
+    "mode": "dark",
+    "light": "One Light",
+    "dark": "Rosé Pine Moon"
+  },
+  "telemetry": {
+    "diagnostics": false,
+    "metrics": false
+  },
+  "scrollbar": {
+    "show": "auto",
+    "git_diff": true
+  },
+  "tabs": {
+    "close_position": "left",
+    "git_status": true,
+    "file_icons": true
+  },
+  "languages": {
+    "Python": {
+      "tab_size": 4,
+      "lint_on_save": true
+    },
+    "C": {
+      "tab_size": 4
+    },
+    "C++": {
+      "tab_size": 4
+    },
+    "Rust": {
+      "tab_size": 4,
+      "show_inline_completions": true
+    },
+    "JSON": {
+      "tab_size": 2
+    },
+    "HTML": {
+      "tab_size": 2
+    }
+  },
+  "terminal": {
+    "font_family": "Fira Code"
+  },
+  "inlay_hints": {
+    "enabled": true,
+    "show_type_hints": true,
+    "show_other_hints": true
+  },
+  "enable_language_server": true,
+  "ensure_final_newline_on_save": true,
+  "lsp": {
+    "wakatime": {
+      "settings": {
+        "api-key": "<insert api key>"
+      }
+    }
+  }
+
+}
