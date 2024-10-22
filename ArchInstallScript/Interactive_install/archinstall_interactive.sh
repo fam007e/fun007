@@ -121,6 +121,8 @@ background_checks() {
     fi
 }
 
+background_checks
+
 log "Setting up mirrors for optimal download"
 iso=$(curl -4 ifconfig.co/country-iso)
 timedatectl set-ntp true
@@ -159,14 +161,35 @@ fi
 partprobe "$DISK" # reread partition table to ensure it is correct
 
 log "Creating Filesystems"
+
 # Define variables for partitions
-if echo "$DISK" | grep -q "nvme"; then
-    partition2=${DISK}p2
-    partition3=${DISK}p3
-else
-    partition2=${DISK}2
-    partition3=${DISK}3
+get_partition_name() {
+    local disk=$1
+    local num=$2
+    if echo "$disk" | grep -q "nvme"; then
+        echo "${disk}p${num}"
+    else
+        echo "${disk}${num}"
+    fi
+}
+
+# Detect SSD
+is_ssd() {
+    local drive=$1
+    [ "$(cat /sys/block/${drive##*/}/queue/rotational)" = "0" ]
+}
+
+# Verify the specified disk is an SSD
+if ! is_ssd "$DISK"; then
+    error "The specified disk $DISK is not an SSD. Please check your configuration."
 fi
+
+partition2=$(get_partition_name "$DISK" 2)
+partition3=$(get_partition_name "$DISK" 3)
+
+log "Using $DISK as the installation drive (SSD)"
+log "EFI partition: $partition2"
+log "Root partition: $partition3"
 
 # Function to create BTRFS subvolumes
 createsubvolumes() {
@@ -240,7 +263,7 @@ if ! grep -qs '/mnt' /proc/mounts; then
 fi
 
 log "Arch Install on Main Drive"
-pacstrap /mnt base base-devel linux linux-firmware sof-firmware nano efibootmgr networkmanager dhclient git ntp wget
+pacstrap /mnt base base-devel "$KERNEL" linux-firmware sof-firmware nano efibootmgr networkmanager dhclient git ntp wget
 
 log "Generating /etc/fstab"
 genfstab -L /mnt >> /mnt/etc/fstab
@@ -327,7 +350,7 @@ if [ -n "$SECONDARY_DISK" ]; then
     log "Configuring secondary disk"
     echo "
 # Mount points for secondary disk
-/dev/mapper/DATA    /mnt/data    btrfs    ${MOUNT_OPTIONS}    0 0
+$SECONDARY_DISK    /mnt/data    auto    ${MOUNT_OPTIONS}    0 0
 /mnt/data/Downloads    /home/${USERNAME}/Downloads    none    bind    0 0
 /mnt/data/Documents    /home/${USERNAME}/Documents    none    bind    0 0
 /mnt/data/Music        /home/${USERNAME}/Music        none    bind    0 0
