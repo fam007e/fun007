@@ -30,7 +30,7 @@ error() {
 
 # Confirmation function
 confirm_action() {
-    read -p "$1 (y/n): " choice
+    read -r -p "$1 (y/n): " choice
     case "$choice" in
         y|Y ) return 0;;
         n|N ) return 1;;
@@ -77,12 +77,12 @@ exec > >(tee -a "$log_file") 2>&1
 
 log "
 ----------------------------------------------------------------------------------------------------------------------
-    _____                .__      .___                 __         .__  .__      _________            .__        __
-   /  _  \_______   ____ |  |__   |   | ____   _______/  |______  |  | |  |    /   _____/ ___________|__|______/  |
-  /  /_\  \_  __ \_/ ___\|  |  \  |   |/    \ /  ___/\   __\__  \ |  | |  |    \_____  \_/ ___\_  __ \  \____ \   __\
- /    |    \  | \/\  \___|   Y  \ |   |   |  \\___ \  |  |  / __ \|  |_|  |__  /        \  \___|  | \/  |  |_> >  |
- \____|__  /__|    \___  >___|  / |___|___|  /____  > |__| (____  /____/____/ /_______  /\___  >__|  |__|   __/|__|
-         \/            \/     \/           \/     \/            \/                    \/     \/         |__|
+   _____                .__      .___                 __         .__  .__      _________            .__        __
+  /  _  \_______   ____ |  |__   |   | ____   _______/  |______  |  | |  |    /   _____/ ___________|__|______/  |
+ /  /_\  \_  __ \_/ ___\|  |  \  |   |/    \ /  ___/\   __\__  \ |  | |  |    \_____  \_/ ___\_  __ \  \____ \   __\
+/    |    \  | \/\  \___|   Y  \ |   |   |  \\___ \  |  |  / __ \|  |_|  |__  /        \  \___|  | \/  |  |_> >  |
+\____|__  /__|    \___  >___|  / |___|___|  /____  > |__| (____  /____/____/ /_______  /\___  >__|  |__|   __/|__|
+        \/            \/     \/           \/     \/            \/                    \/     \/         |__|
 ----------------------------------------------------------------------------------------------------------------------
                                         Automated Arch Linux Installer
 ----------------------------------------------------------------------------------------------------------------------
@@ -121,19 +121,39 @@ background_checks() {
     fi
 }
 
+install_rate_mirrors() {
+    if ! command -v rate-mirrors &> /dev/null; then
+        log "Installing rate-mirrors"
+        pacman -Sy --noconfirm rate-mirrors
+    fi
+}
+
+update_mirrorlist() {
+    log "Updating mirrorlist with fastest HTTPS mirrors"
+    temp_mirrorlist=$(mktemp)
+    rate-mirrors --allow-root --protocol https arch | awk "/^# FINISHED AT:/ {p=1} p" > "$temp_mirrorlist"
+    
+    if [ -s "$temp_mirrorlist" ]; then
+        mv "$temp_mirrorlist" /etc/pacman.d/mirrorlist
+        log "Mirrorlist updated successfully."
+    else
+        log "Failed to update mirrorlist. Retaining the previous list."
+        rm -f "$temp_mirrorlist"
+    fi
+}
+
 background_checks
 
 log "Setting up mirrors for optimal download"
-iso=$(curl -4 ifconfig.co/country-iso)
 timedatectl set-ntp true
 pacman -Sy --noconfirm archlinux-keyring
 pacman -S --noconfirm --needed pacman-contrib terminus-font
 setfont ter-v18b
 sed -i 's/^#ParallelDownloads/ParallelDownloads/' /etc/pacman.conf
-pacman -S --noconfirm --needed reflector rsync grub
+pacman -S --noconfirm --needed rsync grub
 cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
-log "Setting up $iso mirrors for faster downloads"
-reflector -a 48 -c "$iso" -f 5 -l 20 --sort rate --save /etc/pacman.d/mirrorlist
+install_rate_mirrors
+update_mirrorlist
 mkdir -p /mnt
 
 log "Installing Prerequisites"
@@ -176,7 +196,7 @@ get_partition_name() {
 # Detect SSD
 is_ssd() {
     local drive=$1
-    [ "$(cat /sys/block/${drive##*/}/queue/rotational)" = "0" ]
+    [ "$(cat /sys/block/"${drive##*/}"/queue/rotational)" = "0" ]
 }
 
 # Verify the specified disk is an SSD
@@ -317,8 +337,6 @@ sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
 
 log "Installing and configuring additional packages"
-pacman -S --noconfirm reflector
-systemctl enable reflector.timer
 systemctl enable fstrim.timer
 
 # Determine and install microcode

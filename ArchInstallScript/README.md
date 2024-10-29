@@ -14,7 +14,7 @@ This project provides an automated installation process for Arch Linux, with sup
 - Automatic timezone and keyboard layout detection
 - GRUB bootloader installation and theming
 - New: Configuration file generation for semi-interactive installation
-- New: Semi-interactive installation using JSON configuration
+- New: Semi-interactive installation using JSON configuration so install `jq`
 
 ## Prerequisites
 
