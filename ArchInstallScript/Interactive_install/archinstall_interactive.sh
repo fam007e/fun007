@@ -143,8 +143,10 @@ background_checks
 # Mirror selection function
 get_region_from_timezone() {
     local timezone=$1
-    local continent=$(echo "$timezone" | cut -d'/' -f1)
-    local country=$(echo "$timezone" | cut -d'/' -f2)
+    local continent
+    local country
+    continent=$(echo "$timezone" | cut -d'/' -f1)
+    country=$(echo "$timezone" | cut -d'/' -f1)
     
     case "$continent" in
         "Asia")
@@ -194,9 +196,8 @@ get_region_from_timezone() {
 # Mirror update function
 update_mirrorlist() {
     local timezone=$TIMEZONE
-    log "Detecting region from timezone: $timezone"
-    
-    local mirror_countries=$(get_region_from_timezone "$timezone")
+    local mirror_countries
+    mirror_countries=$(get_region_from_timezone "$timezone")
     log "Selected mirror countries: $mirror_countries"
     
     cp /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.backup
@@ -213,7 +214,8 @@ update_mirrorlist() {
     fi
 
     log "Trying continental mirrors..."
-    local continent=$(echo "$timezone" | cut -d'/' -f1)
+    local continent
+    continent=$(echo "$timezone" | cut -d'/' -f1)
     if reflector --continent "$continent" \
                  --protocol https \
                  --latest 10 \
@@ -521,7 +523,8 @@ fi
 sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*/& splash /' /etc/default/grub
 if [ "$FS" = "luks" ]; then
     # Add LUKS support to GRUB
-    sed -i 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="cryptdevice=UUID=$(blkid -s UUID -o value $partition3):ROOT"/' /etc/default/grub
+    UUID=$(blkid -s UUID -o value "$partition3")
+    sed -i "s|GRUB_CMDLINE_LINUX=\"\"|GRUB_CMDLINE_LINUX=\"cryptdevice=UUID=${UUID}:ROOT\"|" /etc/default/grub
 fi
 grub-mkconfig -o /boot/grub/grub.cfg
 
@@ -559,9 +562,57 @@ elif echo "\$gpu_type" | grep -E "Integrated Graphics Controller|Intel Corporati
     pacman -S --noconfirm libva-intel-driver libvdpau-va-gl lib32-vulkan-intel vulkan-intel
 fi
 
-# Install firmware packages
+# Install yay AUR helper and AUR firmware packages
+install_aur_packages() {
+    log "Installing yay AUR helper"
+    
+    # Install necessary build packages
+    pacman -S --noconfirm git base-devel
+    
+    # Create build directory and set ownership
+    mkdir -p /tmp/yay-build
+    chown -R $USERNAME:$USERNAME /tmp/yay-build
+    cd /tmp/yay-build
+    
+    # Clone and build yay as the user
+    su - $USERNAME -c "
+        cd /tmp/yay-build
+        git clone https://aur.archlinux.org/yay.git
+        cd yay
+        makepkg -si --noconfirm
+    "
+    
+    log "Installing AUR firmware packages"
+    # Install AUR firmware packages using yay as the user
+    su - $USERNAME -c "
+        yay -S --noconfirm \
+            upd72020x-fw \
+            ast-firmware \
+            aic94xx-firmware
+    "
+    
+    # Cleanup
+    cd /
+    rm -rf /tmp/yay-build
+}
+
+# Install firmware packages first
 log "Installing firmware packages"
-pacman -S --noconfirm linux-firmware linux-firmware-whence linux-firmware-qlogic 
+pacman -S --noconfirm \
+    linux-firmware \
+    linux-firmware-whence \
+    linux-firmware-qlogic \
+    linux-firmware-bnx2x \
+    linux-firmware-liquidio \
+    linux-firmware-mellanox \
+    linux-firmware-nfp
+
+# Install yay and AUR packages
+log "Installing AUR helper and firmware packages"
+install_aur_packages
+
+# Update mkinitcpio after all firmware installation
+mkinitcpio -P
 
 # Configure mkinitcpio for LUKS if needed
 if [ "$FS" = "luks" ]; then
