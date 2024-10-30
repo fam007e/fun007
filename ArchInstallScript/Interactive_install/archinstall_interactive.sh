@@ -438,11 +438,17 @@ $data_partition    /mnt/data    btrfs    ${MOUNT_OPTIONS}    0 0
 # Execute filesystem setup
 setup_filesystems
 
+# Rebuild the package database if necessary
+log "Rebuilding the package database (if needed)"
+pacman -Q --list | sed 's/ /\n/g' | grep -v ^$ > /tmp/pkglist 
+pacman -Syu --noconfirm 
+pacman -S --noconfirm --needed $(cat /tmp/pkglist)
+
 # Install base system
 log "Beginning system installation"
 log "Installing base system packages"
 if [ "$KERNEL" = "linux-lts" ]; then
-    pacstrap /mnt base base-devel \
+    pacstrap -K /mnt base base-devel \
         linux-lts linux-lts-headers linux-firmware \
         sof-firmware nano efibootmgr \
         networkmanager dhclient \
@@ -450,7 +456,7 @@ if [ "$KERNEL" = "linux-lts" ]; then
         fsck btrfs-progs e2fsprogs dosfstools \
         terminus-font
 else
-    pacstrap /mnt base base-devel \
+    pacstrap -K /mnt base base-devel \
         linux linux-headers linux-firmware \
         sof-firmware nano efibootmgr \
         networkmanager dhclient \
@@ -517,6 +523,20 @@ if [ ! -d "/sys/firmware/efi" ]; then
     grub-install --target=i386-pc "$DISK"
 else
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+fi
+
+TOTAL_MEM=$(awk '/MemTotal/ {print $2}' /proc/meminfo)   
+if [ "$TOTAL_MEM" -lt 8000000 ]; then
+    mkdir -p /mnt/opt/swap
+    if findmnt -n -o FSTYPE /mnt | grep -q btrfs; then
+        chattr +C /mnt/opt/swap
+    fi
+    dd if=/dev/zero of=/mnt/opt/swap/swapfile bs=1M count=2048 status=progress
+    chmod 600 /mnt/opt/swap/swapfile
+    chown root /mnt/opt/swap/swapfile
+    mkswap /mnt/opt/swap/swapfile   
+    swapon /mnt/opt/swap/swapfile
+    printf "%s\n" "/opt/swap/swapfile   none    swap    sw  0   0" >> /mnt/etc/fstab
 fi
 
 # Configure GRUB
