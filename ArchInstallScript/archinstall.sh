@@ -379,38 +379,52 @@ prepare_disk() {
     umount -R /mnt 2>/dev/null || true
 
     # Create mount point
-    mkdir -p /mnt || {
+    if ! mkdir -p /mnt; then
         printf "%b\n" "Error: Failed to create mount point"
         exit 1
-    }
+    fi
 
     # Zap disk
     if ! sgdisk -Z "${DISK}"; then
         printf "%b\n" "Error: Failed to zap disk"
         exit 1
-    }
+    fi
 
     # Create new GPT table
     if ! sgdisk -a 2048 -o "${DISK}"; then
         printf "%b\n" "Error: Failed to create GPT table"
         exit 1
-    }
+    fi
 
     # Create partitions
-    sgdisk -n 1::+1M --typecode=1:ef02 --change-name=1:'BIOSBOOT' "${DISK}" || exit 1  # BIOS boot partition
-    sgdisk -n 2::+512M --typecode=2:ef00 --change-name=2:'EFIBOOT' "${DISK}" || exit 1 # EFI partition
-    sgdisk -n 3::-0 --typecode=3:8300 --change-name=3:'ROOT' "${DISK}" || exit 1       # Root partition
+    if ! sgdisk -n 1::+1M --typecode=1:ef02 --change-name=1:'BIOSBOOT' "${DISK}"; then
+        printf "%b\n" "Error: Failed to create BIOS boot partition"
+        exit 1
+    fi
+
+    if ! sgdisk -n 2::+512M --typecode=2:ef00 --change-name=2:'EFIBOOT' "${DISK}"; then
+        printf "%b\n" "Error: Failed to create EFI partition"
+        exit 1
+    fi
+
+    if ! sgdisk -n 3::-0 --typecode=3:8300 --change-name=3:'ROOT' "${DISK}"; then
+        printf "%b\n" "Error: Failed to create root partition"
+        exit 1
+    fi
 
     # Set legacy boot flag if needed
     if [ ! -d /sys/firmware/efi ]; then
-        sgdisk -A 1:set:2 "${DISK}" || exit 1
+        if ! sgdisk -A 1:set:2 "${DISK}"; then
+            printf "%b\n" "Error: Failed to set legacy boot flag"
+            exit 1
+        fi
     fi
 
     # Inform kernel of partition table changes
-    partprobe "${DISK}" || {
+    if ! partprobe "${DISK}"; then
         printf "%b\n" "Error: Failed to inform kernel of partition changes"
         exit 1
-    }
+    fi
 
     # Set up partition variables
     case "${DISK}" in
@@ -430,31 +444,6 @@ prepare_disk() {
 
     export PARTITION2="$partition2"
     export PARTITION3="$partition3"
-}
-
-# Main installation sequence
-main() {
-    background_checks
-    clear
-    logo
-    userinfo
-    clear
-    logo
-    diskpart
-    clear
-    logo
-    filesystem
-    clear
-    logo
-    timezone
-    clear
-    logo
-    keymap
-    clear
-    logo
-    
-    setup_mirrors || printf "%b\n" "Warning: Mirror setup encountered issues"
-    prepare_disk
 }
 
 # BTRFS subvolume creation function
@@ -606,18 +595,18 @@ setup_filesystems() {
 # Additional storage setup
 setup_storage() {
     printf "%b\n" "-------------------------------------------------------------------------"
-    printf "%b\n" "                    Additional Storage Setup"
+    printf "%b\n" "                    Setting up HDD for Home Directories"
     printf "%b\n" "-------------------------------------------------------------------------"
 
-    # Get available drives excluding system drive
+    # Get available drives excluding system drive (SSD)
     mapfile -t available_drives < <(lsblk -dpnoNAME,SIZE,TYPE | grep -v "${DISK##*/}" | grep "disk" | awk '{print $1"|"$2}')
     
     if [ ${#available_drives[@]} -eq 0 ]; then
-        printf "%b\n" "No additional drives found for storage setup"
+        printf "%b\n" "No additional drives found for home directories"
         return 0
     fi
 
-    printf "%b\n" "Available drives for storage:"
+    printf "%b\n" "Available drives for home directories:"
     select_option "${available_drives[@]}"
     storage_disk=${available_drives[$?]%|*}
 
@@ -639,52 +628,42 @@ setup_storage() {
         /dev/[sv]d*)
             storage_part="${storage_disk}1"
             ;;
-        *)
-            printf "%b\n" "Error: Unknown storage drive type"
-            return 1
-            ;;
     esac
 
-    # Check if SSD
-    if [ -f "/sys/block/${storage_disk##*/}/queue/rotational" ] && 
-       [ "$(cat "/sys/block/${storage_disk##*/}/queue/rotational")" -eq 0 ]; then
-        storage_options="noatime,compress=zstd,ssd,commit=120"
-    else
-        storage_options="noatime,compress=zstd,commit=120"
-    fi
+    # Format the partition
+    mkfs.btrfs -f "${storage_part}" -L HOME_STORAGE
 
-    # Format and mount
-    if ! mkfs.btrfs -f "${storage_part}"; then
-        printf "%b\n" "Error: Failed to format storage partition"
-        return 1
-    fi
-
+    # Get UUID
     STORAGE_UUID=$(blkid -s UUID -o value "${storage_part}")
-    
-    # Create mount points and directories
-    if ! mkdir -p "/mnt/home/${USERNAME}/Storage"; then
-        printf "%b\n" "Error: Failed to create storage mount point"
-        return 1
-    fi
-    
-    if ! mount "${storage_part}" "/mnt/home/${USERNAME}/Storage"; then
-        printf "%b\n" "Error: Failed to mount storage partition"
-        return 1
-    fi
 
-    local user_dirs=("Documents" "Downloads" "Pictures" "Videos")
-    for dir in "${user_dirs[@]}"; do
-        if ! mkdir -p "/mnt/home/${USERNAME}/Storage/${dir}"; then
-            printf "%b\n" "Error: Failed to create ${dir} directory"
-            return 1
-        fi
-    done
+    # Create mount point
+    mkdir -p "/mnt/hdd_home"
+
+    # Mount the partition
+    mount "${storage_part}" "/mnt/hdd_home"
 
     # Add to fstab
-    printf "UUID=%s /home/%s/Storage btrfs %s 0 2\n" \
-        "${STORAGE_UUID}" "${USERNAME}" "${storage_options}" >> /mnt/etc/fstab
+    printf "UUID=%s /hdd_home btrfs defaults,noatime 0 2\n" "${STORAGE_UUID}" >> /mnt/etc/fstab
 
-    # Create symlinks after chroot
+    # Create directories and symlinks
+    mkdir -p "/mnt/hdd_home"/{Documents,Downloads,Pictures,Videos,Music,Templates}
+    
+    # Create user's home directory if it doesn't exist
+    mkdir -p "/mnt/home/${USERNAME}"
+    
+    # Create symlinks
+    ln -sf /hdd_home/Documents "/mnt/home/${USERNAME}/Documents"
+    ln -sf /hdd_home/Downloads "/mnt/home/${USERNAME}/Downloads"
+    ln -sf /hdd_home/Pictures  "/mnt/home/${USERNAME}/Pictures"
+    ln -sf /hdd_home/Videos    "/mnt/home/${USERNAME}/Videos"
+    ln -sf /hdd_home/Music     "/mnt/home/${USERNAME}/Music"
+    ln -sf /hdd_home/Templates "/mnt/home/${USERNAME}/Templates"
+    
+    # Set proper ownership
+    chown -R "${USERNAME}:${USERNAME}" "/mnt/hdd_home"
+    chown -R "${USERNAME}:${USERNAME}" "/mnt/home/${USERNAME}"
+    chown -h "${USERNAME}:${USERNAME}" "/mnt/home/${USERNAME}"/{Documents,Downloads,Pictures,Videos,Music,Templates}
+
     return 0
 }
 
@@ -707,7 +686,7 @@ install_base_system() {
         "base" "base-devel" "linux" "linux-firmware" "linux-headers"
         "xorg" "xorg-server" "xorg-xinit" "xorg-xrandr" "xorg-xsetroot"
         "noto-fonts" "noto-fonts-emoji" "noto-fonts-cjk" 
-        "ttf-meslo-nerd" "ttf-nerd-fonts-symbols"
+        "ttf-meslo-nerd-font-powerlevel10k" "ttf-nerd-fonts-symbols"
         "ttf-jetbrains-mono" "ttf-font-awesome" "rofi-emoji"
         "libx11" "libxft" "libxinerama" "libxcb" "imlib2"
         "networkmanager" "network-manager-applet" "rofi"
@@ -716,6 +695,9 @@ install_base_system() {
         "git" "vim" "nano" "unzip" "flameshot" 
         "lxappearance" "feh" "mate-polkit" "dunst"
         "meson" "libev" "uthash" "libconfig" "dmenu"
+        "gst-libav" "phonon-qt5-gstreamer" "gst-plugins-good"
+        "qt5-quickcontrols" "qt5-graphicaleffects" "qt5-multimedia"
+        "wget" "curl" "rsync" "tree" "htop"
     )
 
     # Add microcode if detected
@@ -874,6 +856,10 @@ install_dwm() {
     # Install DWM dependencies
     pacman -S --needed --noconfirm base-devel libx11 libxinerama libxft imlib2 || exit 1
     
+    if [ -d "/opt/DWM" ]; then
+        rm -rf "/opt/DWM"
+    fi
+    
     # Clone DWM repository
     cd /opt || exit 1
     git clone https://github.com/fam007e/DWM.git || exit 1
@@ -1012,8 +998,11 @@ SDDMCONF
 
     # Install GRUB theme
     THEME_DIR="/boot/grub/themes/Cyberpunk"
-    mkdir -p "\${THEME_DIR}"
-    cd "\${THEME_DIR}" || exit 1
+    if ! mkdir -p "\${THEME_DIR}"; then
+        printf "%b\n" "Warning: Failed to create theme directory"
+        return 1
+    fi
+    cd "\${THEME_DIR}" || return 1
     git init
     git remote add -f origin https://github.com/ChrisTitusTech/Top-5-Bootloader-Themes.git
     git config core.sparseCheckout true
@@ -1051,6 +1040,7 @@ EOF
 # Main installation function
 install_system() {
     install_base_system || exit 1
+    setup_storage || exit 1
     setup_fstab || exit 1
     configure_system || exit 1
     install_yay || exit 1
@@ -1075,3 +1065,33 @@ install_system() {
     # Reboot
     reboot
 }
+
+# Main sequence
+main() {
+    background_checks
+    clear
+    logo
+    userinfo
+    clear
+    logo
+    diskpart
+    clear
+    logo
+    filesystem
+    clear
+    logo
+    timezone
+    clear
+    logo
+    keymap
+    clear
+    logo
+    
+    setup_mirrors || printf "%b\n" "Warning: Mirror setup encountered issues"
+    prepare_disk
+    setup_filesystems
+    install_system
+}
+
+# Execute main function
+main

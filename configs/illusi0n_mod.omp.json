@@ -1,0 +1,98 @@
+{
+  "$schema": "https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json",
+  "transient_prompt": {
+    "template": "❯ ",
+    "foreground": "#CCFFF7",
+    "background": "transparent",
+    "filler": " "
+  },
+  "blocks": [
+    {
+      "type": "rprompt",
+      "segments": [
+        {
+          "template": "{{ round .PhysicalPercentUsed .Precision }}% ",
+          "foreground": "#CCFFF7",
+          "type": "sysinfo",
+          "style": "diamond"
+        },
+        {
+          "template": "{{ (div ((sub .PhysicalTotalMemory .PhysicalFreeMemory)|float64) 1073741824.0) }}/{{ (div .PhysicalTotalMemory 1073741824.0) }}GB ",
+          "foreground": "#CCFFF7",
+          "type": "sysinfo",
+          "style": "diamond"
+        },
+        {
+          "properties": {
+            "time_format": "3:04 PM"
+          },
+          "template": "{{ .CurrentDate | date .Format }} ",
+          "foreground": "#CCFFF7",
+          "type": "time",
+          "style": "plain"
+        }
+      ]
+    },
+    {
+      "type": "prompt",
+      "alignment": "left",
+      "segments": [
+        {
+          "properties": {
+            "macos": "mac"
+          },
+          "template": "{{ if .WSL }}WSL at {{ end }}{{.Icon}} ",
+          "foreground": "#CCFFF7",
+          "type": "os",
+          "style": "plain"
+        },
+        {
+          "template": "$",
+          "foreground": "#CCFFF7",
+          "type": "text",
+          "style": "plain"
+        },
+        {
+          "template": "{{ .UserName }}:",
+          "foreground": "#CCFFF7",
+          "type": "session",
+          "style": "plain"
+        },
+        {
+          "properties": {
+            "folder_separator_icon": "/",
+            "style": "full"
+          },
+          "foreground": "#62c0ff",
+          "type": "path",
+          "style": "plain"
+        },
+        {
+          "properties": {
+            "branch_max_length": 25,
+            "fetch_stash_count": true,
+            "fetch_status": true,
+            "fetch_upstream_icon": true
+          },
+          "template": "<#CCFFF7>on</> {{.UpstreamIcon }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }} \uf044 {{ .Working.String }}{{ end }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }}{{ if gt .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} ",
+          "foreground": "#62c0ff",
+          "type": "git",
+          "style": "plain",
+          "foreground_templates": [
+            "{{ if or (.Working.Changed) (.Staging.Changed) }}#6287ff{{ end }}",
+            "{{ if and (gt .Ahead 0) (gt .Behind 0) }}#7f62ff{{ end }}",
+            "{{ if gt .Ahead 0 }}#9962ff{{ end }}",
+            "{{ if gt .Behind 0 }}#c062ff{{ end }}"
+          ]
+        },
+        {
+          "template": "❯ ",
+          "foreground": "#CCFFF7",
+          "type": "text",
+          "style": "plain"
+        }
+      ]
+    }
+  ],
+  "version": 3
+}
