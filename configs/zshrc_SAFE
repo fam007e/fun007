@@ -218,7 +218,7 @@ extract() {
             *.tar.bz2) tar xvjf $archive ;;
             *.tar.gz) tar xvzf $archive ;;
             *.bz2) bunzip2 $archive ;;
-            *.rar) rar x $archive ;;
+            *.rar) unrar x $archive ;;
             *.gz) gunzip $archive ;;
             *.tar) tar xvf $archive ;;
             *.tbz2) tar xvjf $archive ;;
@@ -288,18 +288,24 @@ alias ffix='$HOME/dwm/scripts/footballfix'
 
 # Finds and adds fastest mirror lists for pacman
 httpsmirrors() {
-    temp_mirrorlist=$(mktemp)
+    temp_mirrorlist=$(mktemp)  # Correctly create a temporary file
+
+    # Generate the new mirrorlist
     rate-mirrors --allow-root --protocol https arch | awk "/^# FINISHED AT:/ {p=1} p" > "$temp_mirrorlist"
-    
+
     # Check if the output is non-empty
     if [ -s "$temp_mirrorlist" ]; then
-        sudo tee /etc/pacman.d/mirrorlist < "$temp_mirrorlist"
-        printf "Mirrorlist updated successfully.\n"
+        # Attempt to update the mirrorlist with sudo
+        if sudo tee /etc/pacman.d/mirrorlist < "$temp_mirrorlist" > /dev/null; then
+            printf "Mirrorlist updated successfully.\n"
+        else
+            printf "Failed to update mirrorlist due to sudo error.\n"
+        fi
     else
-        printf "Failed to update mirrorlist. Retaining the previous list.\n"
+        printf "Failed to generate new mirrorlist. Retaining the previous list.\n"
     fi
-    
-    rm -f "$temp_mirrorlist"
+
+    rm -f "$temp_mirrorlist"  # Always remove the temporary file
 }
 
 # Alias to show all established connections and their resolved names
