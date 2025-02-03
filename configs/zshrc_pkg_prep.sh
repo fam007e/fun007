@@ -39,10 +39,10 @@ fi
 echo "Updating system and installing required packages using $AUR_HELPER..."
 
 # Update the system (use AUR helper instead of pacman)
-sudo $AUR_HELPER -Syu --noconfirm
+$AUR_HELPER -Syu --noconfirm
 
 # Install essential packages
-sudo $AUR_HELPER -S --noconfirm --needed \
+$AUR_HELPER -S --noconfirm --needed \
     zsh \
     git \
     curl \
@@ -76,7 +76,7 @@ sudo $AUR_HELPER -S --noconfirm --needed \
     zsh-autocomplete
 
 # Install Oh-My-Posh dependencies
-sudo $AUR_HELPER -S --noconfirm --needed dotnet-runtime
+$AUR_HELPER -S --noconfirm --needed dotnet-runtime
 
 # Install additional tools from AUR
 $AUR_HELPER -S --noconfirm \
