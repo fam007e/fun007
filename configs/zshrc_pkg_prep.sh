@@ -2,13 +2,47 @@
 
 set -e
 
-echo "Updating system and installing required packages..."
+echo "Checking for AUR helper..."
 
-# Update the system
-sudo pacman -Syu --noconfirm
+# Check for yay or paru, or prompt for user selection if neither is found
+if command -v yay &> /dev/null; then
+    AUR_HELPER="yay"
+elif command -v paru &> /dev/null; then
+    AUR_HELPER="paru"
+else
+    echo "Neither yay nor paru is installed. Please select an AUR helper to install and use:"
+    select choice in "yay" "paru"; do
+        case $choice in
+            yay)
+                echo "Installing yay..."
+                git clone https://aur.archlinux.org/yay.git /tmp/yay
+                (cd /tmp/yay && makepkg -si --noconfirm)
+                rm -rf /tmp/yay
+                AUR_HELPER="yay"
+                break
+                ;;
+            paru)
+                echo "Installing paru..."
+                git clone https://aur.archlinux.org/paru.git /tmp/paru
+                (cd /tmp/paru && makepkg -si --noconfirm)
+                rm -rf /tmp/paru
+                AUR_HELPER="paru"
+                break
+                ;;
+            *)
+                echo "Invalid option. Please select 1 or 2."
+                ;;
+        esac
+    done
+fi
+
+echo "Updating system and installing required packages using $AUR_HELPER..."
+
+# Update the system (use AUR helper instead of pacman)
+sudo $AUR_HELPER -Syu --noconfirm
 
 # Install essential packages
-sudo pacman -S --noconfirm --needed \
+sudo $AUR_HELPER -S --noconfirm --needed \
     zsh \
     git \
     curl \
@@ -37,23 +71,16 @@ sudo pacman -S --noconfirm --needed \
     notify-osd \
     ripgrep \
     fd \
-    zsh-completions
+    zsh-completions \
+    zsh-autosuggestions \
+    zsh-autocomplete
 
 # Install Oh-My-Posh dependencies
-sudo pacman -S --noconfirm --needed dotnet-runtime
-
-# Install AUR helper (yay) if not installed
-if ! command -v yay &> /dev/null; then
-    echo "Installing yay..."
-    git clone https://aur.archlinux.org/yay.git /tmp/yay
-    (cd /tmp/yay && makepkg -si --noconfirm)
-    rm -rf /tmp/yay
-fi
+sudo $AUR_HELPER -S --noconfirm --needed dotnet-runtime
 
 # Install additional tools from AUR
-yay -S --noconfirm \
-    oh-my-posh-bin \
-    fastfetch
+$AUR_HELPER -S --noconfirm \
+    oh-my-posh
 
 # Ensure Zsh is the default shell
 if [[ "$SHELL" != "$(which zsh)" ]]; then
