@@ -1,4 +1,4 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
 # Function to prompt for GitHub configuration
 setup_git_config() {
