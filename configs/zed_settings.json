@@ -1,18 +1,18 @@
 {
   "features": {
-    "inline_completion_provider": "supermaven"
+    "edit_prediction_provider": "supermaven"
   },
   "assistant": {
     "default_model": {
       "provider": "zed.dev",
-      "model": "claude-3-5-sonnet-20240620"
+      "model": "claude-3-7-sonnet-latest"
     },
     "enabled": true,
     "version": "2"
   },
   "auto_update": true,
   "ui_font_size": 15,
-  "buffer_font_family": "Fira Code",
+  "buffer_font_family": "FiraCode Nerd Font",
   "buffer_font_weight": 500,
   "buffer_font_features": {
     "calt": false
@@ -26,7 +26,7 @@
   "theme": {
     "mode": "dark",
     "light": "One Light",
-    "dark": "Rosé Pine Moon"
+    "dark": "Nord"
   },
   "telemetry": {
     "diagnostics": false,
@@ -54,7 +54,7 @@
     },
     "Rust": {
       "tab_size": 4,
-      "show_inline_completions": true
+      "show_edit_predictions": true
     },
     "JSON": {
       "tab_size": 2
@@ -64,7 +64,7 @@
     }
   },
   "terminal": {
-    "font_family": "Fira Code"
+    "font_family": "FiraCode Nerd Font"
   },
   "inlay_hints": {
     "enabled": true,
@@ -76,9 +76,8 @@
   "lsp": {
     "wakatime": {
       "settings": {
-        "api-key": "<insert api key>"
+        "api-key": "<api key>"
       }
     }
   }
-
 }
