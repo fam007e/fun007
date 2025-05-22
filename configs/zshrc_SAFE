@@ -130,7 +130,7 @@ alias ll='eza -alh'
 alias tree='eza --tree'
 alias clear-pacman-cache='sudo pacman -Sc'
 alias clear-cache='yay -Sc'
-alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
+alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 21 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
 alias rm='rm -f'
 alias rmd='rm -rf'
 alias ping='ping -c 10'
@@ -283,9 +283,6 @@ ftext() {
     # optional: -l only print filenames and not the matching lines ex. grep -irl "$1" *
     grep -iIHrn --color=always "$1" . | less -r
 }
-
-# Alias to show football fixtures
-#alias ffix='$HOME/DWM/scripts/footballfix'
 
 # Finds and adds fastest mirror lists for pacman
 httpsmirrors() {
@@ -1196,6 +1193,194 @@ alias latest='latest_anime'
 alias seasonal='seasonal_anime'
 alias rss='setup_rss'
 alias animehelp='anime_help'
+
+# Ultra-simplified TorrentBD function with fzf integration
+torrentbd_news() {
+  local rss_url="TORRENTBD RSS URL"
+  local temp_file=$(mktemp)
+  local details_dir=$(mktemp -d)
+  local download_dir="$HOME/Videos"
+  
+  # Make sure download directory exists
+  mkdir -p "$download_dir"
+  
+  # Fetch RSS feed
+  echo "Fetching latest torrents from TorrentBD..."
+  curl -s "$rss_url" > "$temp_file"
+  
+  if [[ $? -ne 0 ]]; then
+    echo "Failed to fetch RSS feed. Check your internet connection."
+    rm -f "$temp_file"
+    rmdir "$details_dir" 2>/dev/null
+    return 1
+  fi
+  
+  # Process and extract data from RSS
+  local count=1
+  local display_list="${details_dir}/display.txt"
+  touch "$display_list"
+  
+  # Process all item blocks
+  grep -A20 "<item>" "$temp_file" | tr -d '\n' | sed 's/<item>/\n<item>/g' | grep "<item>" | while read -r item; do
+    # Extract title
+    local title=$(echo "$item" | grep -o '<title>.*</title>' | sed 's/<title>\(.*\)<\/title>/\1/' | sed 's/&amp;/\&/g' | sed 's/&#039;/'"'"'/g')
+    
+    # Skip TorrentBD title (channel title)
+    [[ "$title" == "TorrentBD" ]] && continue
+    
+    # Extract link
+    local link=$(echo "$item" | grep -o '<link>.*</link>' | sed 's/<link>\(.*\)<\/link>/\1/' | sed 's/&amp;/\&/g')
+    
+    # Extract category
+    local category=$(echo "$item" | grep -o '<category>.*</category>' | sed 's/<category>\(.*\)<\/category>/\1/' | sed 's/^ *//' | sed 's/ *$//')
+    
+    # Extract description for size, seeders, etc.
+    local description=$(echo "$item" | grep -o '<description>.*</description>' | sed 's/<description>\(.*\)<\/description>/\1/')
+    
+    # Extract pubDate (date)
+    local pubdate=$(echo "$item" | grep -o '<pubDate>.*</pubDate>' | sed 's/<pubDate>\(.*\)<\/pubDate>/\1/')
+    local date=$(echo "$pubdate" | awk '{print $1, $2, $3, $4}' | sed 's/,//g')
+    
+    # Extract size
+    local size=$(echo "$description" | grep -o 'Size: [^ ]* [^ ]*' | sed 's/Size: //')
+    [[ -z "$size" ]] && size="N/A"
+    
+    # Extract seeders
+    local seeders=$(echo "$description" | grep -o 'Seeders: [0-9]*' | sed 's/Seeders: //')
+    [[ -z "$seeders" ]] && seeders="0"
+    
+    # Extract leechers
+    local leechers=$(echo "$description" | grep -o 'Leechers: [0-9]*' | sed 's/Leechers: //')
+    [[ -z "$leechers" ]] && leechers="0"
+    
+    # Extract simplified title - using sed for better compatibility
+    local simple_title=$(echo "$title" | sed -E 's/([0-9]{3,4}p|WEB-DL|BluRay|WEBRip|x264|x265|AAC|DD|AC3|DDP|DTS|HEVC|REMUX|HDR|SDR|REMASTERED|AV1|10bit|AMZN|DSNP|NF|HULU|IMAX|DUBBED|DUAL|PROPER|REPACK|EXTENDED|UNCUT|UNRATED|CRITERION|FLAC).*//')
+    
+    # If it's a TV show, extract just the show name if needed
+    if [[ "$simple_title" == *"S0"* && "$simple_title" == *"E0"* ]]; then
+      simple_title=$(echo "$simple_title" | sed -E 's/(S[0-9]+E[0-9]+).*/\1/')
+    fi
+    
+    # Trim any trailing spaces
+    simple_title=$(echo "$simple_title" | sed 's/ *$//')
+    
+    # Save the details to separate files to avoid quoting issues
+    echo "$title" > "${details_dir}/${count}.title"
+    echo "$category" > "${details_dir}/${count}.category"
+    echo "$size" > "${details_dir}/${count}.size"
+    echo "$seeders" > "${details_dir}/${count}.seeders"
+    echo "$leechers" > "${details_dir}/${count}.leechers"
+    echo "$date" > "${details_dir}/${count}.date"
+    echo "$link" > "${details_dir}/${count}.link"
+    
+    # Format for display - just index and simplified title
+    printf "%-3s %s\n" \
+      "${count}." \
+      "${simple_title}" >> "$display_list"
+    
+    ((count++))
+  done
+  
+  # Check if we have any torrents
+  if [[ ! -s "$display_list" ]]; then
+    echo "No torrents found in the RSS feed."
+    rm -f "$temp_file"
+    rm -rf "$details_dir"
+    return 0
+  fi
+  
+  # Create preview script - show all details in preview
+  cat > "${details_dir}/preview.sh" << 'EOF'
+#!/bin/bash
+line="$1"
+details_dir="$2"
+
+# Extract index number
+idx=$(echo "$line" | awk '{print $1}' | sed 's/\.//')
+
+# Check if files exist
+if [[ -f "${details_dir}/${idx}.title" ]]; then
+  # Read data from files
+  title=$(cat "${details_dir}/${idx}.title")
+  category=$(cat "${details_dir}/${idx}.category")
+  size=$(cat "${details_dir}/${idx}.size")
+  seeders=$(cat "${details_dir}/${idx}.seeders")
+  leechers=$(cat "${details_dir}/${idx}.leechers")
+  date=$(cat "${details_dir}/${idx}.date")
+  
+  # Display formatted information
+  echo -e "\033[1;36m=== TORRENT DETAILS ===\033[0m"
+  echo -e "\033[1;33mTitle:\033[0m $title"
+  echo -e "\033[1;33mCategory:\033[0m $category"
+  echo -e "\033[1;33mSize:\033[0m $size"
+  echo -e "\033[1;33mSeeders:\033[0m $seeders"
+  echo -e "\033[1;33mLeechers:\033[0m $leechers"
+  echo -e "\033[1;33mDate:\033[0m $date"
+else
+  echo -e "\033[1;31mDetails not found for item $idx\033[0m"
+fi
+EOF
+  chmod +x "${details_dir}/preview.sh"
+  
+  # Use fzf for selection
+  local fzf_header="TorrentBD - Use ↑/↓ to navigate, Enter to select, Esc to quit"
+  local selected_line=$(cat "$display_list" | \
+    fzf --height=80% \
+        --layout=reverse \
+        --border=rounded \
+        --header="$fzf_header" \
+        --preview="${details_dir}/preview.sh {} ${details_dir}" \
+        --preview-window=right:50%:wrap \
+        --prompt="Select torrent > " \
+        --pointer="▶" \
+        --marker="✓")
+  
+  # If user cancelled selection
+  if [[ -z "$selected_line" ]]; then
+    echo "Selection cancelled."
+    rm -f "$temp_file"
+    rm -rf "$details_dir" 
+    return 0
+  fi
+  
+  # Extract the item number from the selected line
+  local choice=$(echo "$selected_line" | awk '{print $1}' | sed 's/\.//')
+  
+  # Check if the details files exist
+  if [[ -f "${details_dir}/${choice}.title" && -f "${details_dir}/${choice}.link" ]]; then
+    local title=$(cat "${details_dir}/${choice}.title")
+    local link=$(cat "${details_dir}/${choice}.link")
+    
+    # Clean filename for saving
+    local safe_title=$(echo "$title" | sed 's/[<>:"|?*]/_/g')
+    local torrent_filename="${download_dir}/${safe_title// /_}.torrent"
+    
+    echo "Downloading torrent file for: $title"
+    curl -s -L "$link" -o "$torrent_filename"
+    
+    if [[ $? -eq 0 ]]; then
+      echo "✓ Torrent file saved to: $torrent_filename"
+      echo "Opening with qBittorrent..."
+      
+      # Try to open with qBittorrent if available
+      if command -v qbittorrent >/dev/null 2>&1; then
+        qbittorrent "$torrent_filename" &
+      else
+        echo "qBittorrent not found. Please install it or manually open the torrent file."
+      fi
+    else
+      echo "✗ Failed to download the torrent file."
+    fi
+  else
+    echo "Error: Torrent details not found!"
+  fi
+  
+  # Clean up
+  rm -f "$temp_file"
+  rm -rf "$details_dir"
+}
+
+alias tbd="torrentbd_news"
 
 
 #export PATH="$PATH:$HOME/Github/metasploit-framework"
