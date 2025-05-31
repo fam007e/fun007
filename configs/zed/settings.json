@@ -1,0 +1,136 @@
+{
+  "vim": {
+    "default_mode": "normal",
+    "toggle_relative_line_numbers": false,
+    "use_system_clipboard": "always",
+    "use_multiline_find": false,
+    "use_smartcase_find": false,
+    "highlight_on_yank_duration": 200,
+    "custom_digraphs": {
+      "->": "→",
+      "<-": "←",
+      "=>": "⇒",
+      "<=": "⇐",
+      "!=": "≠",
+      ">=": "≥",
+      "=<": "≤",
+      "+-": "±",
+      "<<": "«",
+      ">>": "»",
+      "..": "…",
+      "tm": "™",
+      "co": "©",
+      "re": "®",
+      "dg": "°",
+      "mu": "μ",
+      "al": "α",
+      "be": "β",
+      "ga": "γ",
+      "de": "δ",
+      "la": "λ",
+      "pi": "π",
+      "si": "σ",
+      "th": "θ",
+      "om": "ω",
+      "in": "∞",
+      "sq": "√",
+      "su": "∑",
+      "pr": "∏",
+      "pa": "∂",
+      "na": "∇"
+    },
+    "cursor_shape": {
+      "normal": "block",
+      "insert": "bar",
+      "visual": "hollow",
+      "replace": "underline"
+    }
+  },
+  "features": {
+    "edit_prediction_provider": "zed"
+  },
+  "agent": {
+    "default_profile": "ask",
+    "always_allow_tool_actions": true,
+    "default_model": {
+      "provider": "zed.dev",
+      "model": "claude-sonnet-4-latest"
+    },
+    "enabled": true,
+    "version": "2"
+  },
+  "auto_update": true,
+  "ui_font_size": 15,
+  "buffer_font_family": "FiraCode Nerd Font",
+  "buffer_font_weight": 500,
+  "buffer_font_features": {
+    "calt": false
+  },
+  "buffer_font_size": 14,
+  "autosave": {
+    "after_delay": {
+      "milliseconds": 1000
+    }
+  },
+  "theme": {
+    "mode": "dark",
+    "light": "One Light",
+    "dark": "Nord"
+  },
+  "telemetry": {
+    "diagnostics": false,
+    "metrics": false
+  },
+  "scrollbar": {
+    "show": "auto",
+    "git_diff": true
+  },
+  "tabs": {
+    "close_position": "left",
+    "git_status": true,
+    "file_icons": true
+  },
+  "languages": {
+    "Python": {
+      "tab_size": 4,
+      "show_edit_predictions": true
+    },
+    "C": {
+      "tab_size": 4,
+      "show_edit_predictions": true
+    },
+    "C++": {
+      "tab_size": 4,
+      "show_edit_predictions": true
+    },
+    "Rust": {
+      "tab_size": 4,
+      "show_edit_predictions": true
+    },
+    "JSON": {
+      "tab_size": 2,
+      "show_edit_predictions": true
+    },
+    "HTML": {
+      "tab_size": 2,
+      "show_edit_predictions": true
+    }
+  },
+  "terminal": {
+    "font_family": "FiraCode Nerd Font"
+  },
+  "inlay_hints": {
+    "enabled": true,
+    "show_type_hints": true,
+    "show_other_hints": true
+  },
+  "enable_language_server": true,
+  "ensure_final_newline_on_save": true,
+  "lsp": {
+    "wakatime": {
+      "settings": {
+        "api-key": "<api key>"
+      }
+    }
+  }
+}
