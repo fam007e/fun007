@@ -2,7 +2,7 @@
 
 ## === General Options ===
 set autoindent     # Automatically indent new lines
-set backup         # Backup files to the current filename plus a tilde
+#set backup         # Backup files to the current filename plus a tilde
 set boldtext       # Use bold text instead of reverse video text
 set casesensitive  # Do case-sensitive searches by default
 set constantshow   # Constantly display the cursor position

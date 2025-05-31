@@ -130,7 +130,7 @@ alias ll='eza -alh'
 alias tree='eza --tree'
 alias clear-pacman-cache='sudo pacman -Sc'
 alias clear-cache='yay -Sc'
-alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 21 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
+alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
 alias rm='rm -f'
 alias rmd='rm -rf'
 alias ping='ping -c 10'
@@ -143,7 +143,7 @@ alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
 alias kc='khal calendar'
 
 # fastfetch utils
-alias ff='fastfetch --logo-width 24 --logo-height 15 --kitty /usr/lib/kitty/logo/kitty-128.png'
+alias ff='fastfetch'
 
 ff-upd() {
     cd $HOME/fastfetch || return
@@ -283,6 +283,9 @@ ftext() {
     # optional: -l only print filenames and not the matching lines ex. grep -irl "$1" *
     grep -iIHrn --color=always "$1" . | less -r
 }
+
+# Alias to show football fixtures
+#alias ffix='$HOME/DWM/scripts/footballfix'
 
 # Finds and adds fastest mirror lists for pacman
 httpsmirrors() {
@@ -1196,7 +1199,7 @@ alias animehelp='anime_help'
 
 # Ultra-simplified TorrentBD function with fzf integration
 torrentbd_news() {
-  local rss_url="TORRENTBD RSS URL"
+  local rss_url="https://www.torrentbd.net/feed.php?v=2&limit=100&cat=28,77,76,47,3,61&max_size=8&user=6531c8d8548f3a0dc703&passkey=b8098a66a44cd9fe90392281036c8006"
   local temp_file=$(mktemp)
   local details_dir=$(mktemp -d)
   local download_dir="$HOME/Videos"
