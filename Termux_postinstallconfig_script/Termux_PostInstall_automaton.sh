@@ -1,7 +1,6 @@
 #!/data/data/com.termux/files/usr/bin/env bash
 
 # Enhanced Termux Post-Installation Configuration Script
-# Based on fun007 repository structure and requirements
 
 set -e  # Exit on any error
 
@@ -81,8 +80,8 @@ setup_repositories() {
 setup_git_config() {
     log "Setting up Git and SSH configuration..."
     
-    read -p "Enter your GitHub username: " username
-    read -p "Enter your GitHub email address: " email
+    read -rp "Enter your GitHub username: " username
+    read -rp "Enter your GitHub email address: " email
     
     # Configure git globally
     git config --global user.name "$username"
@@ -92,7 +91,7 @@ setup_git_config() {
     echo "Choose your SSH key type:"
     echo "1. Ed25519 (recommended)"
     echo "2. RSA (legacy)"
-    read -p "Enter your choice (1 or 2): " key_type
+    read -rp "Enter your choice (1 or 2): " key_type
 
     case $key_type in
         1) key_algo="ed25519" ;;
@@ -103,7 +102,7 @@ setup_git_config() {
             ;;
     esac
 
-    read -p "Enter a custom SSH key name (leave blank for default): " key_name
+    read -rp "Enter a custom SSH key name (leave blank for default): " key_name
     ssh_key_path="${HOME}/.ssh/${key_name:-id_$key_algo}"
     
     # Create .ssh directory if it doesn't exist
@@ -137,19 +136,19 @@ copy_and_confirm_ssh_key() {
     log "Your SSH public key has been copied to the clipboard."
     
     echo ""
-    echo "============================================"
+    echo -e "${BLUE}============================================${NC}"
     echo "IMPORTANT: Add your SSH key to GitHub"
-    echo "============================================"
+    echo -e "${BLUE}============================================${NC}"
     echo "1. Go to https://github.com/settings/keys"
     echo "2. Click 'New SSH key'"
     echo "3. Paste the key from your clipboard"
     echo "4. Give it a title (e.g., 'Termux Device')"
     echo "5. Click 'Add SSH key'"
-    echo "============================================"
+    echo -e "${BLUE}============================================${NC}"
     echo ""
 
     while true; do
-        read -p "Have you added your SSH public key to your GitHub account? (y/n): " yn
+        read -rp "Have you added your SSH public key to your GitHub account? (y/n): " yn
         case $yn in
             [Yy]* ) 
                 log "Testing SSH connection to GitHub..."
@@ -181,7 +180,16 @@ install_development_packages() {
         python \
         python-pip \
         sudo \
-        tsu \
+        mesa \
+        mesa-dev \
+        vulkan-headers \
+        ocl-icd \
+        opencl-headers \
+        freetype \
+        libandroid-wordexp \
+        chafa \
+        imagemagick \
+        fastfetch \
         eza \
         multitail \
         tree \
@@ -202,7 +210,6 @@ install_development_packages() {
     
     # Install Python packages
     log "Installing Python packages..."
-    pip install --upgrade pip
     pip install trash-cli requests beautifulsoup4
 }
 
@@ -227,28 +234,18 @@ setup_development_tools() {
         git clone git@github.com:fam007e/fun007.git
     fi
     
-    # Clone fastfetch with build dependencies
-    if [[ ! -d ~/dev/fastfetch ]]; then
-        log "Installing fastfetch build dependencies..."
-        apt install -y \
-            mesa \
-            mesa-dev \
-            vulkan-headers \
-            ocl-icd \
-            opencl-headers \
-            freetype \
-            libandroid-wordexp \
-            chafa \
-            imagemagick
-        
-        log "Cloning and building fastfetch..."
-        git clone git@github.com:fastfetch-cli/fastfetch.git
-        cd fastfetch
-        mkdir -p build && cd build
-        cmake .. -DCMAKE_INSTALL_PREFIX=/data/data/com.termux/files/usr
-        cmake --build . --target package
-        cmake --install . --prefix /data/data/com.termux/files/usr
-        cd ~/dev
+    # Clone termux-adb-fastboot repository
+    if [[ ! -d ~/dev/termux-adb-fastboot ]]; then
+        log "Cloning termux-adb-fastboot repository..."
+        git clone git@github.com:offici5l/termux-adb-fastboot.git
+    fi
+    
+    # Install termux-adb-fastboot
+    if [[ -d ~/dev/termux-adb-fastboot ]]; then
+        log "Installing termux-adb-fastboot..."
+        cd ~/dev/termux-adb-fastboot
+        ./install
+        cd
     fi
 }
 
@@ -256,10 +253,13 @@ setup_development_tools() {
 setup_configurations() {
     log "Setting up configuration files..."
     
-    # Copy bashrc configuration
-    if [[ -f ~/dev/fun007/configs/bashrc_SAFE ]]; then
-        cp ~/dev/fun007/configs/bashrc_SAFE ~/.bashrc
-        log "Bashrc configuration copied."
+    # Copy bashrc configuration - USING TERMUX-SPECIFIC VERSION
+    if [[ -f ~/dev/fun007/configs/termux/bashrc_SAFE_TMX ]]; then
+        cp ~/dev/fun007/configs/termux/bashrc_SAFE_TMX ~/.bashrc
+        log "Termux-specific bashrc configuration copied."
+    elif [[ -f ~/dev/fun007/configs/bash/bashrc_SAFE ]]; then
+        cp ~/dev/fun007/configs/bash/bashrc_SAFE ~/.bashrc
+        log "General bashrc configuration copied."
     fi
     
     # Copy starship configuration
@@ -281,6 +281,13 @@ setup_configurations() {
     if [[ -f ~/dev/fun007/configs/fastfetch/ff_SAFE_config.jsonc ]]; then
         cp ~/dev/fun007/configs/fastfetch/ff_SAFE_config.jsonc ~/.config/fastfetch/config.jsonc
         log "Fastfetch configuration copied."
+    fi
+    
+    # Setup Termux colors (if available)
+    if [[ -f ~/dev/fun007/configs/termux/colors.properties_tmx ]]; then
+        mkdir -p ~/.termux
+        cp ~/dev/fun007/configs/termux/colors.properties_tmx ~/.termux/colors.properties
+        log "Termux-specific colors configuration copied."
     fi
     
     # Clone additional configurations
@@ -363,9 +370,9 @@ install_fonts() {
     )
 
     echo ""
-    echo "=========================================="
+    echo -e "${BLUE}==========================================${NC}"
     echo "Font Installation"
-    echo "=========================================="
+    echo -e "${BLUE}==========================================${NC}"
     echo "Select fonts to install (separate with spaces):"
     echo "Example: 0 15 33 (for 0xProto, FantasqueSansMono, JetBrainsMono)"
     echo "------------------------------------------"
@@ -388,12 +395,12 @@ install_fonts() {
             log "Downloading and installing $font Nerd Font..."
             
             wget -q --show-progress \
-                "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/$font.tar.xz" \
+                "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${font}.tar.xz" \
                 -P ~/tmp
                 
-            if [[ -f ~/tmp/$font.tar.xz ]]; then
-                tar -xf ~/tmp/$font.tar.xz -C ~/.local/share/fonts/
-                rm ~/tmp/$font.tar.xz
+            if [[ -f ~/tmp/"${font}".tar.xz ]]; then
+                tar -xf ~/tmp/"${font}".tar.xz -C ~/.local/share/fonts/
+                rm ~/tmp/"${font}".tar.xz
                 log "$font installed successfully."
             else
                 error "Failed to download $font"
@@ -433,7 +440,7 @@ select_font_for_termux() {
     echo "----------------"
 
     local choice
-    read -p "Enter the number of the font for Termux (or press Enter for first font): " choice
+    read -rp "Enter the number of the font for Termux (or press Enter for first font): " choice
     
     if [[ -z "$choice" ]]; then
         choice=1
@@ -477,7 +484,7 @@ select_theme_for_termux() {
     echo "-----------------"
 
     local choice
-    read -p "Enter theme number (or press Enter for 'nord'): " choice
+    read -rp "Enter theme number (or press Enter for 'nord'): " choice
     
     # Default to nord theme if available
     if [[ -z "$choice" ]]; then
@@ -511,17 +518,17 @@ finalize_setup() {
     # Reload termux settings
     termux-reload-settings 2>/dev/null || true
     
-    # Source bashrc
+    # shellcheck disable=SC1090
     source ~/.bashrc 2>/dev/null || true
     
     log "Setup completed successfully!"
     echo ""
-    echo "=============================================="
+    echo -e "${BLUE}==============================================${NC}"
     echo "SETUP COMPLETE!"
-    echo "=============================================="
+    echo -e "${BLUE}==============================================${NC}"
     echo "Please restart Termux to apply all changes."
     echo ""
-    echo "Installed tools:"
+    echo -e "${BLUE}Installed tools:${NC}"
     echo "  - Git with SSH setup"
     echo "  - Neovim with kickstart config"
     echo "  - Starship prompt"
@@ -529,17 +536,17 @@ finalize_setup() {
     echo "  - FZF fuzzy finder"
     echo "  - Various CLI utilities"
     echo ""
-    echo "Configuration files are in:"
+    echo -e "${BLUE}Configuration files are in:${NC}"
     echo "  - ~/.bashrc (main shell config)"
     echo "  - ~/.config/starship.toml (prompt config)"
     echo "  - ~/.config/nvim/ (Neovim config)"
     echo "  - ~/.config/fastfetch/ (system info config)"
     echo ""
-    echo "Repositories cloned to:"
+    echo -e "${BLUE}Repositories cloned to:${NC}"
     echo "  - ~/dev/fun007 (your dotfiles)"
     echo "  - ~/dev/fastfetch (system info tool)"
     echo "  - ~/dev/mybash (additional configs)"
-    echo "=============================================="
+    echo -e "${BLUE}==============================================${NC}"
 }
 
 # Main execution
