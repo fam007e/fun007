@@ -244,6 +244,7 @@ setup_development_tools() {
     if [[ -d ~/dev/termux-adb-fastboot ]]; then
         log "Installing termux-adb-fastboot..."
         cd ~/dev/termux-adb-fastboot
+        chmod +x install
         ./install
         cd
     fi
