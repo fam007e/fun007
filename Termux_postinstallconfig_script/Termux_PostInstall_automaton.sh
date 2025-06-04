@@ -280,6 +280,7 @@ setup_configurations() {
     mkdir -p ~/.config/fastfetch
     if [[ -f ~/dev/fun007/configs/fastfetch/ff_SAFE_config.jsonc ]]; then
         cp ~/dev/fun007/configs/fastfetch/ff_SAFE_config.jsonc ~/.config/fastfetch/config.jsonc
+        cp ~/dev/fun007/configs/fastfetch/ascii.txt ~/.config/fastfetch/ascii.txt
         log "Fastfetch configuration copied."
     fi
     
@@ -288,15 +289,6 @@ setup_configurations() {
         mkdir -p ~/.termux
         cp ~/dev/fun007/configs/termux/colors.properties_tmx ~/.termux/colors.properties
         log "Termux-specific colors configuration copied."
-    fi
-    
-    # Clone additional configurations
-    if [[ ! -d ~/dev/mybash ]]; then
-        log "Cloning mybash configuration..."
-        git clone https://github.com/christitustech/mybash.git ~/dev/mybash
-        if [[ -f ~/dev/mybash/config.jsonc ]]; then
-            cp ~/dev/mybash/config.jsonc ~/.config/fastfetch/ 2>/dev/null || true
-        fi
     fi
     
     # Setup Neovim configuration
@@ -544,8 +536,6 @@ finalize_setup() {
     echo ""
     echo -e "${BLUE}Repositories cloned to:${NC}"
     echo "  - ~/dev/fun007 (your dotfiles)"
-    echo "  - ~/dev/fastfetch (system info tool)"
-    echo "  - ~/dev/mybash (additional configs)"
     echo -e "${BLUE}==============================================${NC}"
 }
 
