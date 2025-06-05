@@ -8,32 +8,6 @@
   },
   "blocks": [
     {
-      "type": "rprompt",
-      "segments": [
-        {
-          "template": "{{ round .PhysicalPercentUsed .Precision }}% ",
-          "foreground": "#CCFFF7",
-          "type": "sysinfo",
-          "style": "diamond"
-        },
-        {
-          "template": "{{ (div ((sub .PhysicalTotalMemory .PhysicalFreeMemory)|float64) 1073741824.0) }}/{{ (div .PhysicalTotalMemory 1073741824.0) }}GB ",
-          "foreground": "#CCFFF7",
-          "type": "sysinfo",
-          "style": "diamond"
-        },
-        {
-          "properties": {
-            "time_format": "3:04 PM"
-          },
-          "template": "{{ .CurrentDate | date .Format }} ",
-          "foreground": "#CCFFF7",
-          "type": "time",
-          "style": "plain"
-        }
-      ]
-    },
-    {
       "type": "prompt",
       "alignment": "left",
       "segments": [
@@ -47,13 +21,7 @@
           "style": "plain"
         },
         {
-          "template": "$",
-          "foreground": "#CCFFF7",
-          "type": "text",
-          "style": "plain"
-        },
-        {
-          "template": "{{ .UserName }}:",
+          "template": "{{ .UserName }} ",
           "foreground": "#CCFFF7",
           "type": "session",
           "style": "plain"
@@ -61,20 +29,35 @@
         {
           "properties": {
             "folder_separator_icon": "/",
-            "style": "full"
+            "style": "full",
+            "mapped_locations": {
+              "~/Github": "\uf09b "
+            }
           },
+          "template": "in {{ .Path }} ",
           "foreground": "#62c0ff",
           "type": "path",
           "style": "plain"
+        },
+        {
+          "type": "python",
+          "style": "plain",
+          "foreground": "#9ece6a",
+          "template": "{{ if .Venv }}via [{{ .Venv }}] {{ end }}",
+          "properties": {
+            "display_mode": "environment",
+            "display_version": false
+          }
         },
         {
           "properties": {
             "branch_max_length": 25,
             "fetch_stash_count": true,
             "fetch_status": true,
-            "fetch_upstream_icon": true
+            "fetch_upstream_icon": true,
+            "github_icon": "\uf09b"
           },
-          "template": "<#CCFFF7>on</> {{.UpstreamIcon }}{{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }} \uf044 {{ .Working.String }}{{ end }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }}{{ if gt .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} ",
+          "template": "on {{ if .UpstreamIcon }}{{ .UpstreamIcon }}{{ else }}{{ if eq .ProviderName \"github\" }}\uf09b{{ else }}{{ if eq .ProviderName \"gitlab\" }}\uf296{{ else }}{{ if eq .ProviderName \"bitbucket\" }}\uf171{{ else }}\ue725{{ end }}{{ end }}{{ end }}{{ end }} {{ .HEAD }}{{if .BranchStatus }} {{ .BranchStatus }}{{ end }}{{ if .Working.Changed }} \uf044 {{ .Working.String }}{{ end }}{{ if and (.Working.Changed) (.Staging.Changed) }} |{{ end }}{{ if .Staging.Changed }} \uf046 {{ .Staging.String }}{{ end }}{{ if gt .StashCount 0 }} \ueb4b {{ .StashCount }}{{ end }} ",
           "foreground": "#62c0ff",
           "type": "git",
           "style": "plain",
@@ -86,7 +69,7 @@
           ]
         },
         {
-          "template": "❯ ",
+          "template": "\n❯ ",
           "foreground": "#CCFFF7",
           "type": "text",
           "style": "plain"
