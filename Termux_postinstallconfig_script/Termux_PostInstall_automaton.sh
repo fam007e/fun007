@@ -342,7 +342,7 @@ install_fonts() {
         "LiberationMono"
         "Lilex"
         "MartianMono"
-        "MesloLG"
+        "Meslo"
         "Monaspice"
         "Monofur"
         "Monoid"

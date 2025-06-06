@@ -127,6 +127,7 @@ alias multitail='multitail --no-repeat -c'
 alias vi='nvim'
 alias svi='vi'
 alias vis='nvim "+set si"'
+alias ff='fastfetch'
 
 # Change directory aliases
 alias home='cd ~'
