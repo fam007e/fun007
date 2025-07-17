@@ -141,6 +141,7 @@ alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && printf terminal || pr
 alias da='date "+%Y-%m-%d %A %T %Z"'
 alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
 alias kc='khal calendar'
+alias yayf="yay -Slq | fzf --multi --preview 'yay -Sii {1}' --preview-window=down:75% | xargs -ro yay -S"
 
 # fastfetch utils
 alias ff='fastfetch'
