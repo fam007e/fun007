@@ -11,7 +11,7 @@ fi
 source "${ZINIT_HOME}/zinit.zsh"
 
 #Add in Oh-my-posh
-zinit ice depth=1; zinit light jandedobbeleer/oh-my-posh 
+zinit ice depth=1; zinit light jandedobbeleer/oh-my-posh
 
 # Add in zsh plugins
 zinit light zsh-users/zsh-syntax-highlighting
@@ -143,12 +143,13 @@ alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
 alias kc='khal calendar'
 alias yayf="yay -Slq | fzf --multi --preview 'yay -Sii {1}' --preview-window=down:75% | xargs -ro yay -S"
 
+
 # fastfetch utils
 alias ff='fastfetch'
 
 ff-upd() {
     cd $HOME/fastfetch || return
-    
+
     output=$(git pull)
 
     # Check if the output indicates "Already up to date."
@@ -157,13 +158,13 @@ ff-upd() {
         cd
     else
         cd $HOME/fastfetch/build || return
-        
+
         # Remove all contents in the build directory
         rm -rf *
-        
+
         # Rebuild and install Fastfetch
         cmake .. && cmake --build . --target package && sudo cmake --install . --prefix /usr/
-        
+
         cd
     fi
 }
@@ -211,6 +212,8 @@ alias mkgz='tar -cvzf'
 alias untar='tar -xvf'
 alias unbz2='tar -xvjf'
 alias ungz='tar -xvzf'
+alias mk7z='7z a -t7z'
+alias mkzip='zip -r'
 
 # Extracts any archive(s) (if unp isn't installed)
 extract() {
@@ -257,7 +260,7 @@ ungpgextract() {
     if [[ -f "$1" ]]; then
         output_file="${1%.gpg}"
         gpg --output "$output_file" --decrypt "$1"
-        
+
         if [[ $? -eq 0 ]]; then
             extract "$output_file"
             if [[ $? -eq 0 ]]; then
@@ -287,8 +290,6 @@ ftext() {
     grep -iIHrn --color=always "$1" . | less -r
 }
 
-# Alias to show football fixtures
-#alias ffix='$HOME/DWM/scripts/footballfix'
 
 # Finds and adds fastest mirror lists for pacman
 httpsmirrors() {
@@ -389,7 +390,7 @@ alias kssh="kitty +kitten ssh"
 filter_papers() {
   local file=$1
   local keep_qp=$2
-  
+
   awk '!/"$keep_qp"'[1-9]/ "$file" > filtered_results.dat
 }
 
@@ -632,7 +633,7 @@ quad9_dns() {
 dwn_iso() {
     local iso_dir="$HOME/Downloads/ISO"
     mkdir -p "$iso_dir"
-    
+
     # Arch Linux URLs (primary and fallback)
     local arch_url_base1="https://mirror.rackspace.com/archlinux/iso/latest/"
     local arch_url_base2="https://geo.mirror.pkgbuild.com/iso/latest/"
@@ -644,7 +645,7 @@ dwn_iso() {
     download_arch_iso() {
         local arch_latest_ver=$(curl -sL "${arch_url_base1}" | grep -oP 'archlinux-\K[0-9]{4}\.[0-9]{2}\.[0-9]{2}' | head -n 1)
         local iso_filename="archlinux-${arch_latest_ver}-x86_64.iso"
-    
+
         # Check if the ISO already exists
         if [ -f "$iso_dir/$iso_filename" ]; then
             echo "Arch ISO is already the latest version: $iso_filename"
@@ -654,18 +655,18 @@ dwn_iso() {
                 echo "Primary Arch URL failed, attempting fallback..."
                 curl -o "$iso_dir/$iso_filename" "${arch_url_base2}${iso_filename}"
             fi
-    
+
             # Download the verification files
             curl -o "$iso_dir/sha256sums.txt" "${arch_url_base1}sha256sums.txt" || curl -o "$iso_dir/sha256sums.txt" "${arch_url_base2}sha256sums.txt"
             curl -o "$iso_dir/b2sums.txt" "${arch_url_base1}b2sums.txt" || curl -o "$iso_dir/b2sums.txt" "${arch_url_base2}b2sums.txt"
             curl -o "$iso_dir/${iso_filename}.sig" "${arch_url_base1}${iso_filename}.sig" || curl -o "$iso_dir/${iso_filename}.sig" "${arch_url_base2}${iso_filename}.sig"
-    
+
             # Download and import Arch Linux signing keys if needed
             if ! gpg --list-keys 76A5EF9054449A5C &>/dev/null; then
                 echo "Downloading Arch Linux signing key..."
                 gpg --auto-key-locate clear,wkd -v --locate-external-key pierre@archlinux.org
             fi
-    
+
             # Run ISO verification script
             sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
         fi
@@ -696,11 +697,11 @@ dwn_iso() {
     download_tails_iso
 }
 
-# Anime utility functions for .zshrc
+# FZF-based Anime Torrent Manager for .zshrc
 # Download directory path - centralized for easy updating
 ANIME_DOWNLOAD_DIR="$HOME/Videos"
 
-# HTTP request helper function to reduce code duplication
+# HTTP request helper function
 fetch_url() {
     local url="$1"
     if command -v curl &> /dev/null; then
@@ -713,430 +714,127 @@ fetch_url() {
     fi
 }
 
-# Function to check anime torrents from Nyaa RSS feed
-anime_torrents() {
-    local search_term="$1"
-    local quality="${2:-1080p}"
-    local fansub="${3:-}"  # Changed default to empty for true "show all" behavior
-    local max_results="${4:-10}"
-    local rss_url="https://nyaa.si/?page=rss&c=1_2&f=0"  # Anime - English translated
-    
-    # If search term provided, use specific URL
-    [[ -n "$search_term" ]] && rss_url="https://nyaa.si/?page=rss&q=${search_term// /+}&c=1_2&f=0"
-    
-    # Try SubsPlease RSS if conditions match and it has content
-    if [[ "$fansub" == "SubsPlease" && -z "$search_term" && "$quality" == "1080p" ]]; then
-        local subsplease_url="https://subsplease.org/rss/?t&r=1080"
-        if fetch_url "$subsplease_url" | grep -q "<item>"; then
-            rss_url="$subsplease_url"
-        else
-            echo "Note: SubsPlease RSS feed appears empty, using Nyaa.si instead"
-        fi
-    fi
-    
-    echo "🔍 Fetching anime torrents from Nyaa.si..."
-    echo "📡 RSS Feed: $rss_url"
-    
-    # Only show filter information if filters are actually being applied
-    if [[ -n "$fansub" || -n "$quality" ]]; then
-        local filter_text=""
-        [[ -n "$fansub" ]] && filter_text+="$fansub"
-        [[ -n "$fansub" && -n "$quality" ]] && filter_text+=", "
-        [[ -n "$quality" ]] && filter_text+="$quality"
-        echo "⚙️  Filters: $filter_text"
+# Function to calculate dynamic FZF height based on item count
+_calculate_fzf_height() {
+    local item_count="$1"
+    local min_height=10
+    local max_height=25
+    local padding=4  # Extra lines for border, prompt, etc.
+
+    local calculated_height=$((item_count + padding))
+
+    # Ensure height is within bounds
+    if [[ $calculated_height -lt $min_height ]]; then
+        echo "${min_height}"
+    elif [[ $calculated_height -gt $max_height ]]; then
+        echo "${max_height}"
     else
-        echo "⚙️  Filters: None (showing all releases)"
-    fi
-    
-    echo "───────────────────────────────────────────────────"
-    
-    # Parse RSS feed with AWK (improved implementation)
-    local awk_script='
-    BEGIN { 
-        RS = "<item>"; 
-        FS = "\n"; 
-        count = 0; 
-        show_all = (fansub == ""); 
-    }
-    NR > 1 { 
-        title = ""; pubDate = ""; link = ""; id = "";
-        for (i=1; i<=NF; i++) {
-            if ($i ~ /<title>/) {
-                gsub(/<title>|<\/title>/, "", $i);
-                title = $i;
-            }
-            else if ($i ~ /<pubDate>/) {
-                gsub(/<pubDate>|<\/pubDate>/, "", $i);
-                pubDate = $i;
-            }
-            else if ($i ~ /<link>https:\/\/nyaa.si\/download\//) {
-                gsub(/<link>https:\/\/nyaa.si\/download\/|\.torrent<\/link>/, "", $i);
-                id = $i;
-            }
-        }
-        
-        if (title != "" && pubDate != "" && id != "") {
-            # Fix: Logic to properly handle empty filters
-            matches = 1;
-            
-            # If fansub filter is specified, check if title contains it
-            if (fansub != "" && index(tolower(title), tolower(fansub)) == 0) {
-                matches = 0;
-            }
-            
-            # If quality filter is specified, check if title contains it
-            if (quality != "" && index(tolower(title), tolower(quality)) == 0) {
-                matches = 0;
-            }
-            
-            if (matches) {
-                count++;
-                if (count <= max_results) {
-                    printf("\033[1;36m%s\033[0m\n\033[1;33m%s\033[0m\nID: \033[1;32m%s\033[0m\n\n", 
-                        pubDate, title, id);
-                }
-            }
-        }
-    }'
-    
-    # Execute the AWK script and capture its output
-    local output=$(fetch_url "$rss_url" | awk -v fansub="$fansub" -v quality="$quality" -v max_results="$max_results" "$awk_script")
-    
-    # Display output
-    echo "$output"
-    
-    # Check if we got any results
-    local results_found=0
-    [[ -n "$output" ]] && results_found=1
-    
-    # If no results found, try without filters if they were applied
-    if [[ $results_found -eq 0 && ("$fansub" != "" || "$quality" != "") ]]; then
-        echo "No results found with current filters. Would you like to search without filters? (y/n)"
-        read -r -k 1 no_filter_choice
-        echo ""
-        
-        if [[ "$no_filter_choice" =~ [yY] ]]; then
-            echo "Searching without filters..."
-            echo "───────────────────────────────────────────────────"
-            anime_torrents "$search_term" "" "" "$max_results"
-            return $?
-        fi
-    fi
-    
-    # Only prompt for download if we found results
-    if [[ $results_found -eq 1 ]]; then
-        prompt_download
-        return 0
-    else
-        echo "No matching anime torrents found. Try different search terms or filters."
-        return 1
+        echo "${calculated_height}"
     fi
 }
 
-# Helper function to prompt user for download choice
-prompt_download() {
-    echo "Do you want to download a torrent? (y/n)"
-    read -r -k 1 download_choice
-    echo ""
-    
-    if [[ "$download_choice" =~ [yY] ]]; then
-        echo "Enter the torrent ID to download:"
-        read -r torrent_id
-        
-        echo "Download method:"
-        echo "1) Torrent file"
-        echo "2) Magnet link (recommended)"
-        read -r -k 1 method_choice
-        echo ""
-        
-        case $method_choice in
-            1) download_torrent "$torrent_id" ;;
-            2) download_magnet "$torrent_id" ;;
-            *) download_magnet "$torrent_id" ;;
+# Main FZF anime interface
+anime() {
+    # Check if fzf is installed
+    if ! command -v fzf &> /dev/null; then
+        echo "Error: fzf is required but not installed."
+        echo "Install it with: brew install fzf (macOS) or apt install fzf (Ubuntu)"
+        return 1
+    fi
+
+    while true; do
+        local options="🔍 Search Anime\n📺 Latest Releases\n🌸 Seasonal Anime\n⚙️  Browse by Fansub\n🔄 Setup RSS\n❌ Exit"
+        local option_count=$(echo -e "$options" | wc -l)
+        local height=$(_calculate_fzf_height $option_count)
+
+        local choice=$(echo -e "$options" | fzf \
+            --prompt="🎌 Anime Manager › " \
+            --height="${height}" \
+            --border=rounded \
+            --border-label=" Main Menu " \
+            --border-label-pos=2 \
+            --ansi \
+            --cycle \
+            --info=inline)
+
+        case "$choice" in
+            *"Search Anime"*)
+                _anime_search_interface
+                ;;
+            *"Latest Releases"*)
+                _anime_latest_interface
+                ;;
+            *"Seasonal Anime"*)
+                _anime_seasonal_interface
+                ;;
+            *"Browse by Fansub"*)
+                _anime_fansub_interface
+                ;;
+            *"Setup RSS"*)
+                _anime_rss_interface
+                ;;
+            *"Exit"*|"")
+                break
+                ;;
         esac
-    fi
+    done
 }
 
-# Function to download a torrent by ID directly to qBittorrent
-download_torrent() {
-    local torrent_id="$1"
-    
-    if [[ -z "$torrent_id" ]]; then
-        echo "Error: No torrent ID provided."
-        echo "Usage: download_torrent [torrent_id]"
-        return 1
-    fi
-    
-    echo "🔽 Downloading torrent with ID: $torrent_id"
-    echo "📁 Download directory: $ANIME_DOWNLOAD_DIR"
-    
-    # Create temporary directory for the torrent file
-    local temp_dir="/tmp/anime_torrents"
-    mkdir -p "$temp_dir"
-    
-    # Download the torrent file
-    local torrent_url="https://nyaa.si/download/$torrent_id.torrent"
-    local torrent_file="$temp_dir/$torrent_id.torrent"
-    
-    if ! fetch_url "$torrent_url" > "$torrent_file"; then
-        echo "Error: Failed to download torrent file."
-        return 1
-    fi
-    
-    # Check if the torrent file was downloaded successfully
-    if [[ ! -f "$torrent_file" ]]; then
-        echo "Error: Failed to download torrent file."
-        return 1
-    fi
-    
-    # Open the torrent in qBittorrent with the specified download directory
-    if command -v qbittorrent &> /dev/null; then
-        echo "👉 Opening torrent in qBittorrent..."
-        qbittorrent --save-path="$ANIME_DOWNLOAD_DIR" "$torrent_file"
-        echo "✅ Torrent added to qBittorrent with download path: $ANIME_DOWNLOAD_DIR"
-    elif command -v qbittorrent-nox &> /dev/null; then
-        echo "👉 Adding torrent to qBittorrent (headless)..."
-        qbittorrent-nox --save-path="$ANIME_DOWNLOAD_DIR" "$torrent_file"
-        echo "✅ Torrent added to qBittorrent with download path: $ANIME_DOWNLOAD_DIR"
-    else
-        echo "Error: qBittorrent is not installed or not in your PATH."
-        echo "The torrent file has been saved to: $torrent_file"
-        return 1
-    fi
-}
+# Search interface with multiple selections
+_anime_search_interface() {
+    echo "Enter anime name to search:"
+    read -r search_term
 
-# Function to directly add a magnet link to qBittorrent
-download_magnet() {
-    local torrent_id="$1"
-    
-    if [[ -z "$torrent_id" ]]; then
-        echo "Error: No torrent ID provided."
-        echo "Usage: download_magnet [torrent_id]"
-        return 1
-    fi
-    
-    echo "🧲 Getting magnet link for torrent ID: $torrent_id"
-    echo "📁 Download directory: $ANIME_DOWNLOAD_DIR"
-    
-    # Get the magnet link from the Nyaa page
-    local magnet_link=$(fetch_url "https://nyaa.si/view/$torrent_id" | grep -o 'magnet:[^"]*' | head -1)
-    
-    if [[ -z "$magnet_link" ]]; then
-        echo "Error: Failed to get magnet link for torrent ID $torrent_id."
-        return 1
-    fi
-    
-    # Add the magnet link to qBittorrent
-    if command -v qbittorrent &> /dev/null; then
-        echo "👉 Adding magnet link to qBittorrent..."
-        qbittorrent --save-path="$ANIME_DOWNLOAD_DIR" "$magnet_link"
-        echo "✅ Magnet link added to qBittorrent with download path: $ANIME_DOWNLOAD_DIR"
-    elif command -v qbittorrent-nox &> /dev/null; then
-        echo "👉 Adding magnet link to qBittorrent (headless)..."
-        qbittorrent-nox --save-path="$ANIME_DOWNLOAD_DIR" "$magnet_link"
-        echo "✅ Magnet link added to qBittorrent with download path: $ANIME_DOWNLOAD_DIR"
-    else
-        echo "Error: qBittorrent is not installed or not in your PATH."
-        echo "Magnet link: $magnet_link"
-        return 1
-    fi
-}
-
-# Function to show latest releases with improved sorting
-latest_anime() {
-    echo "📺 Latest Anime Releases"
-    echo "───────────────────────────────────────────────────"
-    
-    # Go directly to Nyaa.si
-    local rss_url="https://nyaa.si/?page=rss&c=1_2&f=0"
-    echo "🔍 Fetching anime torrents from Nyaa.si..."
-    echo "📡 RSS Feed: $rss_url"
-    echo "───────────────────────────────────────────────────"
-    
-    # AWK script for parsing and sorting RSS feed
-    local awk_script='
-    BEGIN { 
-        RS = "<item>"; 
-        FS = "\n"; 
-        count = 0;
-    }
-    NR > 1 { 
-        title = ""; pubDate = ""; link = ""; id = "";
-        for (i=1; i<=NF; i++) {
-            if ($i ~ /<title>/) {
-                gsub(/<title>|<\/title>/, "", $i);
-                title = $i;
-            }
-            else if ($i ~ /<pubDate>/) {
-                gsub(/<pubDate>|<\/pubDate>/, "", $i);
-                pubDate = $i;
-            }
-            else if ($i ~ /<link>https:\/\/nyaa.si\/download\//) {
-                gsub(/<link>https:\/\/nyaa.si\/download\/|\.torrent<\/link>/, "", $i);
-                id = $i;
-            }
-        }
-        
-        if (title != "" && pubDate != "" && id != "") {
-            count++;
-            if (count <= 15) {
-                entry = sprintf("\033[1;36m%s\033[0m\n\033[1;33m%s\033[0m\nID: \033[1;32m%s\033[0m\n\n", 
-                    pubDate, title, id);
-                entries[count] = entry;
-                dates[count] = pubDate;
-            }
-        }
-    }
-    END {
-        # Sort entries by date (most recent first)
-        for (i = 1; i <= count; i++) {
-            for (j = i + 1; j <= count; j++) {
-                if (dates[i] < dates[j]) {
-                    # Swap dates and entries
-                    temp = dates[i]; dates[i] = dates[j]; dates[j] = temp;
-                    temp = entries[i]; entries[i] = entries[j]; entries[j] = temp;
-                }
-            }
-        }
-        
-        # Print sorted entries
-        for (i = 1; i <= count; i++) {
-            printf("%s", entries[i]);
-        }
-    }'
-    
-    # Parse and display the results
-    fetch_url "$rss_url" | awk "$awk_script"
-    
-    # Prompt for download
-    prompt_download
-}
-
-# Function to search for a specific anime - optimized version
-search_anime() {
-    local search_term="$1"
-    local quality="${2:-1080p}"
-    
     if [[ -z "$search_term" ]]; then
-        echo "Please provide a search term."
-        echo "Usage: search_anime [anime_name] [quality]"
+        echo "No search term provided."
         return 1
     fi
-    
-    echo "🔍 Searching for \"$search_term\" in $quality quality..."
-    
-    # First try with NO fansub filter (show all fansubs)
-    # Note: Empty string as 3rd parameter means "no filter"
-    if anime_torrents "$search_term" "$quality" "" 15; then
-        return 0
-    fi
-    
-    # If no results found with quality filter, try without quality filter
-    echo "No results found with quality filter. Trying without quality filter..."
-    if anime_torrents "$search_term" "" "" 15; then
-        return 0
-    fi
-    
-    # If still no results, try with common misspellings or alternative names
-    echo "No results found. Would you like to try with a different search term? (y/n)"
-    read -r -k 1 try_different
-    echo ""
-    
-    if [[ "$try_different" =~ [yY] ]]; then
-        echo "Enter alternative anime name:"
-        read -r alt_name
-        search_anime "$alt_name" "$quality"
-    else
-        echo "No anime torrents found matching your criteria."
-        return 1
-    fi
+
+    # Quality selection
+    local quality_options="1080p\n720p\n480p\nAny Quality"
+    local quality_count=$(echo -e "$quality_options" | wc -l)
+    local quality_height=$(_calculate_fzf_height $quality_count)
+
+    local quality=$(echo -e "$quality_options" | fzf \
+        --prompt="📺 Quality › " \
+        --height="${quality_height}" \
+        --border=rounded \
+        --border-label=" Select Quality " \
+        --border-label-pos=2 \
+        --cycle)
+    [[ "$quality" == "Any Quality" ]] && quality=""
+
+    # Fansub selection
+    local fansub_options="All Fansubs\nSubsPlease\nErai-raws\nDameDesuYo\nHorribleSubs\nCommie\nAniplex"
+    local fansub_count=$(echo -e "$fansub_options" | wc -l)
+    local fansub_height=$(_calculate_fzf_height $fansub_count)
+
+    local fansub=$(echo -e "$fansub_options" | fzf \
+        --prompt="👥 Fansub › " \
+        --height="${fansub_height}" \
+        --border=rounded \
+        --border-label=" Select Fansub Group " \
+        --border-label-pos=2 \
+        --cycle)
+    [[ "$fansub" == "All Fansubs" ]] && fansub=""
+
+    _anime_browse_and_download "$search_term" "$quality" "$fansub"
 }
 
-# Function to search by specific fansub group
-search_by_fansub() {
-    local search_term="$1"
-    local quality="${2:-1080p}"
-    
-    if [[ -z "$search_term" ]]; then
-        echo "Please provide a search term."
-        echo "Usage: search_by_fansub [anime_name] [quality]"
-        return 1
-    fi
-    
-    echo "Select a fansub group:"
-    echo "1) SubsPlease"
-    echo "2) Erai-raws"
-    echo "3) DameDesuYo"
-    echo "4) Other (specify)"
-    read -r -k 1 fansub_choice
-    echo ""
-    
-    local fansub=""
-    case $fansub_choice in
-        1) fansub="SubsPlease" ;;
-        2) fansub="Erai-raws" ;;
-        3) fansub="DameDesuYo" ;;
-        4) 
-            echo "Enter fansub name:"
-            read -r fansub
-            ;;
-        *) fansub="SubsPlease" ;;
-    esac
-    
-    echo "🔍 Searching for \"$search_term\" in $quality quality from $fansub..."
-    anime_torrents "$search_term" "$quality" "$fansub" 15
+# Latest releases interface
+_anime_latest_interface() {
+    echo "📺 Fetching latest anime releases..."
+    _anime_browse_and_download "" "1080p" ""
 }
 
-# Function to set up qBittorrent RSS feeds
-setup_rss() {
-    local anime_name="$1"
-    local quality="${2:-1080p}"
-    local fansub="${3:-SubsPlease}"
-    
-    if [[ -z "$anime_name" ]]; then
-        echo "Please provide an anime name."
-        echo "Usage: setup_rss [anime_name] [quality] [fansub]"
-        return 1
-    fi
-    
-    echo "🔄 Setting up RSS feed for $anime_name ($quality, $fansub)"
-    echo "This will help qBittorrent automatically download new episodes."
-    echo ""
-    echo "Steps to set up in qBittorrent:"
-    echo "1. Open qBittorrent"
-    echo "2. Go to View > RSS Reader"
-    echo "3. Click 'New subscription' and add: https://nyaa.si/?page=rss&c=1_2&f=0"
-    echo "4. Click 'RSS Downloader' button on the right"
-    echo "5. Create a new rule named: $anime_name"
-    echo "6. In 'Must contain', add: $fansub $anime_name $quality"
-    echo "7. Set download folder to: $ANIME_DOWNLOAD_DIR"
-    echo ""
-    echo "For SubsPlease specifically, you can use this direct RSS URL:"
-    echo "https://subsplease.org/rss/?t&r=${quality/p/}"
-    echo ""
-    
-    echo "Would you like to open qBittorrent now? (y/n)"
-    read -r -k 1 open_choice
-    echo ""
-    
-    if [[ "$open_choice" =~ [yY] ]] && command -v qbittorrent &> /dev/null; then
-        qbittorrent &
-    elif [[ "$open_choice" =~ [yY] ]]; then
-        echo "Error: qBittorrent is not installed or not in your PATH."
-    fi
-}
+# Seasonal anime interface
+_anime_seasonal_interface() {
+    echo "🌸 Fetching seasonal anime..."
 
-# Function to list seasonal anime
-seasonal_anime() {
-    echo "🌸 Current Season Anime"
-    echo "───────────────────────────────────────────────────"
-    
-    # Get current season information
+    # Get current season
     local current_month=$(date +%m)
-    local current_year=$(date +%Y)
     local season=""
-    
-    # Determine current season
+
     if [[ $current_month -ge 1 && $current_month -le 3 ]]; then
         season="WINTER"
     elif [[ $current_month -ge 4 && $current_month -le 6 ]]; then
@@ -1146,65 +844,437 @@ seasonal_anime() {
     else
         season="FALL"
     fi
-    
-    echo "📅 Season: $season $current_year"
-    echo "───────────────────────────────────────────────────"
-    
-    # Search for popular anime this season on Nyaa
-    # Using SubsPlease as they typically have seasonal shows
-    anime_torrents "" "1080p" "SubsPlease" 15
-    
-    echo "Do you want to search for a specific anime from this season? (y/n)"
-    read -r -k 1 search_choice
-    echo ""
-    
-    if [[ "$search_choice" =~ [yY] ]]; then
-        echo "Enter the anime name:"
-        read -r anime_name
-        search_anime "$anime_name"
+
+    echo "📅 Current season: $season $(date +%Y)"
+    _anime_browse_and_download "" "1080p" "SubsPlease"
+}
+
+# Fansub-specific interface
+_anime_fansub_interface() {
+    local fansub_options="SubsPlease\nErai-raws\nDameDesuYo\nHorribleSubs\nCommie\nAniplex"
+    local fansub_count=$(echo -e "$fansub_options" | wc -l)
+    local fansub_height=$(_calculate_fzf_height $fansub_count)
+
+    local fansub=$(echo -e "$fansub_options" | fzf \
+        --prompt="👥 Fansub › " \
+        --height="${fansub_height}" \
+        --border=rounded \
+        --border-label=" Select Fansub Group " \
+        --border-label-pos=2 \
+        --cycle)
+
+    if [[ -n "$fansub" ]]; then
+        echo "Enter anime name (or leave empty for all from $fansub):"
+        read -r search_term
+
+        local quality_options="1080p\n720p\n480p\nAny Quality"
+        local quality_count=$(echo -e "$quality_options" | wc -l)
+        local quality_height=$(_calculate_fzf_height $quality_count)
+
+        local quality=$(echo -e "$quality_options" | fzf \
+            --prompt="📺 Quality › " \
+            --height="${quality_height}" \
+            --border=rounded \
+            --border-label=" Select Quality " \
+            --border-label-pos=2 \
+            --cycle)
+        [[ "$quality" == "Any Quality" ]] && quality=""
+
+        _anime_browse_and_download "$search_term" "$quality" "$fansub"
     fi
 }
 
-# Function to display help information
+# RSS setup interface
+_anime_rss_interface() {
+    echo "Enter anime name for RSS setup:"
+    read -r anime_name
+
+    if [[ -z "$anime_name" ]]; then
+        echo "No anime name provided."
+        return 1
+    fi
+
+    local quality_options="1080p\n720p\n480p"
+    local quality_count=$(echo -e "$quality_options" | wc -l)
+    local quality_height=$(_calculate_fzf_height $quality_count)
+
+    local quality=$(echo -e "$quality_options" | fzf \
+        --prompt="📺 Quality › " \
+        --height="${quality_height}" \
+        --border=rounded \
+        --border-label=" RSS Quality " \
+        --border-label-pos=2 \
+        --cycle)
+
+    local fansub_options="SubsPlease\nErai-raws\nDameDesuYo"
+    local fansub_count=$(echo -e "$fansub_options" | wc -l)
+    local fansub_height=$(_calculate_fzf_height $fansub_count)
+
+    local fansub=$(echo -e "$fansub_options" | fzf \
+        --prompt="👥 Fansub › " \
+        --height="${fansub_height}" \
+        --border=rounded \
+        --border-label=" RSS Fansub Group " \
+        --border-label-pos=2 \
+        --cycle)
+
+    _setup_rss_feed "$anime_name" "$quality" "$fansub"
+}
+
+# Core function to fetch, display, and handle anime selection
+_anime_browse_and_download() {
+    local search_term="$1"
+    local quality="$2"
+    local fansub="$3"
+    local max_results=50
+
+    # Build RSS URL
+    local rss_url="https://nyaa.si/?page=rss&c=1_2&f=0"
+    [[ -n "$search_term" ]] && rss_url="https://nyaa.si/?page=rss&q=${search_term// /+}&c=1_2&f=0"
+
+    # Try SubsPlease RSS if conditions match
+    if [[ "$fansub" == "SubsPlease" && -z "$search_term" && "$quality" == "1080p" ]]; then
+        local subsplease_url="https://subsplease.org/rss/?t&r=1080"
+        if fetch_url "$subsplease_url" | grep -q "<item>"; then
+            rss_url="$subsplease_url"
+        fi
+    fi
+
+    echo "🔍 Fetching anime torrents..."
+
+    # Create temporary file for torrent data
+    local temp_file=$(mktemp)
+    local display_file=$(mktemp)
+
+    # Improved RSS parsing with better ID extraction
+    fetch_url "$rss_url" | awk -v fansub="$fansub" -v quality="$quality" -v max_results="$max_results" '
+    BEGIN {
+        RS = "<item>";
+        FS = "\n";
+        count = 0;
+    }
+    NR > 1 {
+        title = ""; pubDate = ""; id = ""; link = "";
+        
+        for (i=1; i<=NF; i++) {
+            if ($i ~ /<title>/) {
+                gsub(/<title>|<\/title>/, "", $i);
+                # Clean up title - remove extra whitespace and HTML entities
+                gsub(/&amp;/, "\\&", $i);
+                gsub(/&lt;/, "<", $i);
+                gsub(/&gt;/, ">", $i);
+                gsub(/&quot;/, "\"", $i);
+                gsub(/^\s+|\s+$/, "", $i);
+                title = $i;
+            }
+            else if ($i ~ /<pubDate>/) {
+                gsub(/<pubDate>|<\/pubDate>/, "", $i);
+                pubDate = $i;
+            }
+            else if ($i ~ /<link>/) {
+                gsub(/<link>|<\/link>/, "", $i);
+                link = $i;
+                # Extract ID from different possible link formats
+                if (match(link, /\/download\/([0-9]+)/, arr)) {
+                    id = arr[1];
+                } else if (match(link, /\/view\/([0-9]+)/, arr)) {
+                    id = arr[1];
+                } else if (match(link, /[^0-9]([0-9]{6,})/, arr)) {
+                    id = arr[1];
+                }
+            }
+            else if ($i ~ /<guid>/) {
+                # Fallback: try to extract ID from GUID if link didnt work
+                if (id == "" && match($i, /([0-9]{6,})/, arr)) {
+                    id = arr[1];
+                }
+            }
+        }
+
+        # Validate we have all required fields
+        if (title != "" && pubDate != "" && id != "" && length(id) >= 6) {
+            matches = 1;
+
+            # Apply filters
+            if (fansub != "" && index(tolower(title), tolower(fansub)) == 0) {
+                matches = 0;
+            }
+            if (quality != "" && index(tolower(title), tolower(quality)) == 0) {
+                matches = 0;
+            }
+
+            if (matches) {
+                count++;
+                if (count <= max_results) {
+                    # Format: date | title | id
+                    printf("%s|%s|%s\n", pubDate, title, id);
+                }
+            }
+        }
+    }' > "$temp_file"
+
+    # Check if we got results
+    if [[ ! -s "$temp_file" ]]; then
+        echo "No anime torrents found matching your criteria."
+        rm -f "$temp_file" "$display_file"
+        return 1
+    fi
+
+    # Count results for dynamic height
+    local result_count=$(wc -l < "$temp_file")
+    local display_height=$(_calculate_fzf_height $result_count)
+
+    # Create improved display format for fzf
+    awk -F'|' '{
+        # Clean and truncate title
+        title = $2;
+        gsub(/^\s+|\s+$/, "", title);  # Remove leading/trailing whitespace
+        
+        # Extract and format date
+        date_str = $1;
+        gsub(/^[A-Za-z]+,\s*/, "", date_str);  # Remove "Mon, " etc
+        split(date_str, date_parts, " ");
+        
+        # Format: "02 Jan" for better readability
+        if (length(date_parts) >= 2) {
+            day = date_parts[1];
+            month = substr(date_parts[2], 1, 3);
+            # Pad day with zero if needed
+            if (length(day) == 1) day = "0" day;
+            short_date = day " " month;
+        } else {
+            short_date = substr(date_str, 1, 6);
+        }
+        
+        # Ensure ID is valid
+        id = $3;
+        if (length(id) < 6) {
+            id = "N/A";
+        }
+        
+        # Truncate title based on terminal width consideration
+        # Format: 📅 DD MMM 📺 Title... 🆔 ID
+        date_part_length = length(short_date) + 6;  # "📅 " + date + " "
+        id_part_length = length(id) + 6;           # " 🆔 " + id
+        available_for_title = 85 - date_part_length - id_part_length;
+        
+        if (length(title) > available_for_title) {
+            title = substr(title, 1, available_for_title - 3) "...";
+        }
+        
+        # Nice formatted output with proper spacing
+        printf("📅 %s 📺 %s 🆔 %s\n", short_date, title, id);
+    }' "$temp_file" > "$display_file"
+
+    # FZF selection with multi-select enabled and improved preview
+    local selections=$(cat "$display_file" | fzf \
+        --multi \
+        --prompt="🎯 Select › " \
+        --height="${display_height}" \
+        --border=rounded \
+        --border-label=" Anime Torrents (TAB: multi-select) " \
+        --border-label-pos=2 \
+        --preview='echo "📅 Date: $(echo {} | sed "s/📅 \([^📺]*\) 📺.*/\1/")" && echo "🆔 ID: $(echo {} | sed "s/.*🆔 \([^ ]*\)$/\1/")" && echo "📺 Title:" && echo {} | sed "s/📅 [^📺]* 📺 \(.*\) 🆔 [^ ]*$/\1/" | fold -w 60' \
+        --preview-window=up:5:wrap \
+        --bind='ctrl-a:select-all,ctrl-d:deselect-all,ctrl-t:toggle-all' \
+        --cycle \
+        --info=inline)
+
+    if [[ -z "$selections" ]]; then
+        echo "No selection made."
+        rm -f "$temp_file" "$display_file"
+        return 0
+    fi
+
+    # Process selections
+    local method_options="🧲 Magnet Links (Recommended)\n📁 Torrent Files"
+    local method_count=$(echo -e "$method_options" | wc -l)
+    local method_height=$(_calculate_fzf_height $method_count)
+
+    local download_method=$(echo -e "$method_options" | fzf \
+        --prompt="⬇️  Method › " \
+        --height="${method_height}" \
+        --border=rounded \
+        --border-label=" Download Method " \
+        --border-label-pos=2 \
+        --cycle)
+
+    echo "$selections" | while IFS= read -r line; do
+        # Extract torrent ID and title from the formatted line
+        local torrent_id=$(echo "$line" | sed 's/.*🆔 \([^ ]*\)$/\1/')
+        local title=$(echo "$line" | sed 's/📅 [^📺]* 📺 \(.*\) 🆔 [^ ]*$/\1/')
+
+        echo "🔽 Processing: $title"
+
+        if [[ "$download_method" == *"Magnet"* ]]; then
+            _download_magnet "$torrent_id"
+        else
+            _download_torrent "$torrent_id"
+        fi
+
+        echo "✅ Added to qBittorrent"
+        echo "───────────────────────────────────────"
+    done
+
+    rm -f "$temp_file" "$display_file"
+
+    # Ask if user wants to continue browsing
+    local continue_options="✅ Yes\n❌ No"
+    local continue_count=$(echo -e "$continue_options" | wc -l)
+    local continue_height=$(_calculate_fzf_height $continue_count)
+
+    if echo -e "$continue_options" | fzf \
+        --prompt="🔄 Continue › " \
+        --height="${continue_height}" \
+        --border=rounded \
+        --border-label=" Continue Browsing? " \
+        --border-label-pos=2 \
+        --cycle | grep -q "Yes"; then
+        anime
+    fi
+}
+
+# Download torrent file
+_download_torrent() {
+    local torrent_id="$1"
+
+    if [[ -z "$torrent_id" || "$torrent_id" == "N/A" ]]; then
+        echo "Error: No valid torrent ID provided."
+        return 1
+    fi
+
+    # Create temporary directory
+    local temp_dir="/tmp/anime_torrents"
+    mkdir -p "$temp_dir"
+
+    # Download torrent file
+    local torrent_url="https://nyaa.si/download/$torrent_id.torrent"
+    local torrent_file="$temp_dir/$torrent_id.torrent"
+
+    if ! fetch_url "$torrent_url" > "$torrent_file"; then
+        echo "Error: Failed to download torrent file."
+        return 1
+    fi
+
+    # Add to qBittorrent
+    if command -v qbittorrent &> /dev/null; then
+        qbittorrent --save-path="$ANIME_DOWNLOAD_DIR" "$torrent_file" &
+    elif command -v qbittorrent-nox &> /dev/null; then
+        qbittorrent-nox --save-path="$ANIME_DOWNLOAD_DIR" "$torrent_file" &
+    else
+        echo "Error: qBittorrent not found. Torrent saved to: $torrent_file"
+        return 1
+    fi
+}
+
+# Download magnet link
+_download_magnet() {
+    local torrent_id="$1"
+
+    if [[ -z "$torrent_id" || "$torrent_id" == "N/A" ]]; then
+        echo "Error: No valid torrent ID provided."
+        return 1
+    fi
+
+    # Get magnet link
+    local magnet_link=$(fetch_url "https://nyaa.si/view/$torrent_id" | grep -o 'magnet:[^"]*' | head -1)
+
+    if [[ -z "$magnet_link" ]]; then
+        echo "Error: Failed to get magnet link for torrent ID $torrent_id."
+        return 1
+    fi
+
+    # Add to qBittorrent
+    if command -v qbittorrent &> /dev/null; then
+        qbittorrent --save-path="$ANIME_DOWNLOAD_DIR" "$magnet_link" &
+    elif command -v qbittorrent-nox &> /dev/null; then
+        qbittorrent-nox --save-path="$ANIME_DOWNLOAD_DIR" "$magnet_link" &
+    else
+        echo "Error: qBittorrent not found."
+        echo "Magnet link: $magnet_link"
+        return 1
+    fi
+}
+
+# RSS setup function
+_setup_rss_feed() {
+    local anime_name="$1"
+    local quality="$2"
+    local fansub="$3"
+
+    echo "🔄 RSS Setup for: $anime_name ($quality, $fansub)"
+    echo "───────────────────────────────────────────────────"
+    echo "Steps to set up in qBittorrent:"
+    echo "1. Open qBittorrent"
+    echo "2. Go to View > RSS Reader"
+    echo "3. Click 'New subscription' and add: https://nyaa.si/?page=rss&c=1_2&f=0"
+    echo "4. Click 'RSS Downloader' button"
+    echo "5. Create a new rule named: $anime_name"
+    echo "6. In 'Must contain', add: $fansub $anime_name $quality"
+    echo "7. Set download folder to: $ANIME_DOWNLOAD_DIR"
+    echo ""
+
+    if [[ "$fansub" == "SubsPlease" ]]; then
+        echo "For SubsPlease, you can also use this direct RSS URL:"
+        echo "https://subsplease.org/rss/?t&r=${quality/p/}"
+        echo ""
+    fi
+
+    if echo -e "✅ Yes\n❌ No" | fzf \
+        --prompt="🚀 Launch › " \
+        --height="6" \
+        --border=rounded \
+        --border-label=" Open qBittorrent? " \
+        --border-label-pos=2 \
+        --cycle | grep -q "Yes"; then
+        if command -v qbittorrent &> /dev/null; then
+            qbittorrent &
+        else
+            echo "Error: qBittorrent not found in PATH."
+        fi
+    fi
+}
+
+# Help function
 anime_help() {
     cat << 'EOF'
-🎮 Anime Torrent Downloader - Help
+🎮 FZF Anime Torrent Manager - Help
 ───────────────────────────────────────────────────
-Commands:
-  anime [anime_name] [quality]  - Search for anime torrents (all fansubs)
-  fansub [anime_name] [quality] - Search by specific fansub group
-  latest                        - Show latest anime releases
-  seasonal                      - Show current season anime
-  setup_rss [anime_name]        - Set up automatic downloads
+Main Command:
+  anime                         - Launch interactive FZF interface
 
-Examples:
-  anime "One Piece" 720p       - Search for One Piece in 720p
-  anime "Jujutsu Kaisen"       - Search for Jujutsu Kaisen in 1080p
-  fansub "Demon Slayer"        - Search with specific fansub options
-  setup_rss "Demon Slayer"     - Set up RSS for Demon Slayer
+Features:
+  🔍 Search Anime              - Search by title with quality/fansub filters
+  📺 Latest Releases          - Browse newest anime releases
+  🌸 Seasonal Anime           - Current season anime from SubsPlease
+  ⚙️  Browse by Fansub         - Browse specific fansub releases
+  🔄 Setup RSS                - Configure automatic episode downloads
+
+Navigation:
+  TAB                          - Select multiple torrents
+  Ctrl+A                       - Select all torrents
+  Ctrl+D                       - Deselect all torrents
+  Ctrl+T                       - Toggle all selections
+  Enter                        - Confirm selection
+  Esc                          - Cancel/Go back
 
 Tips:
-  - Quality options: 1080p, 720p, 480p
-  - Fansub options: SubsPlease, Erai-raws, DameDesuYo, etc.
-  - SubsPlease releases new episodes fastest
-  - Use magnet links for faster downloads
+  - Use multi-select (TAB) to download multiple episodes at once
+  - Magnet links are faster than torrent files
   - All downloads go to: $ANIME_DOWNLOAD_DIR
+  - RSS setup enables automatic episode downloads
+  - Preview shows torrent details before selection
+
+Requirements:
+  - fzf (fuzzy finder)
+  - qBittorrent or qBittorrent-nox
+  - curl or wget
 EOF
 }
 
-# Command aliases for easy access
-alias nyaa='anime_torrents'
-alias anime='search_anime'
-alias fansub='search_by_fansub'
-alias latest='latest_anime'
-alias seasonal='seasonal_anime'
-alias rss='setup_rss'
-alias animehelp='anime_help'
-
-
 # Enhanced TorrentBD function with multiple download support - FIXED
 torrentbd_news() {
-  local rss_url="<TorrentBD RSS URL>"
+  local rss_url="<INSERT YOUR TORRENTBD RSS URL HERE>"
   local temp_file=$(mktemp)
   local details_dir=$(mktemp -d)
   local download_dir="$HOME/Videos"
