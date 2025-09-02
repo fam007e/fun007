@@ -130,7 +130,7 @@ alias ll='eza -alh'
 alias tree='eza --tree'
 alias clear-pacman-cache='sudo pacman -Sc'
 alias clear-cache='yay -Sc'
-alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
+#alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
 alias rm='rm -f'
 alias rmd='rm -rf'
 alias ping='ping -c 10'
@@ -143,6 +143,50 @@ alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
 alias kc='khal calendar'
 alias yayf="yay -Slq | fzf --multi --preview 'yay -Sii {1}' --preview-window=down:75% | xargs -ro yay -S"
 
+# Passwd Generator
+passwdGEN() {
+    local length=${1:-19}  # Default length: 19
+    local case_variance=""
+    local numbers=""
+    local special=""
+
+    # Only shift if there are arguments beyond the first one
+    if [ $# -gt 1 ]; then
+        shift  # Remove length argument
+    elif [ $# -eq 1 ]; then
+        # If only one argument (length), clear the argument list
+        set --
+    fi
+
+    # Parse additional arguments for character set flags
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -c|--case-variance) case_variance="-c" ;;
+            -n|--numbers) numbers="-n" ;;
+            -s|--special) special="-s" ;;
+            *) echo "Error: Invalid option $1. Use -c, -n, or -s." ; return 1 ;;
+        esac
+        shift
+    done
+
+    # Validate length
+    if ! [[ "$length" =~ ^[0-9]+$ ]] || [ "$length" -lt 12 ]; then
+        echo "Error: Length must be a number >= 12"
+        return 1
+    fi
+
+    # Check if at least one character set is enabled (script requires at least lowercase)
+    if [ -z "$case_variance" ] && [ -z "$numbers" ] && [ -z "$special" ]; then
+        echo "Warning: No character sets specified. Defaulting to lowercase + uppercase + numbers + special."
+        case_variance="-c"
+        numbers="-n"
+        special="-s"
+    fi
+
+    # Run the password generator and extract the password
+    python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py $case_variance $numbers $special "$length" | grep "Generated Password:" | awk '{for(i=3;i<=NF;i++)printf "%s", $i}' | tee >(pbcopy)
+    echo  # Add newline after password
+}
 
 # fastfetch utils
 alias ff='fastfetch'
