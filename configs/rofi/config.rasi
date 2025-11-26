@@ -2,4 +2,6 @@ configuration{
 	modi:"window,run,drun,emoji,calc";
 }
 
-@theme "/usr/share/rofi/themes/android_notification.rasi"
+//@theme "/usr/share/rofi/themes/android_notification.rasi"
+
+@theme "$HOME/.config/rofi/themes/roundednord.rasi"
