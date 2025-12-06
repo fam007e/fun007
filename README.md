@@ -1,77 +1,90 @@
 # fun007
 
-Welcome to `fun007`, a diverse collection of utilities, scripts, and configurations designed to streamline various tasks and enhance your system. This repository serves as a hub for a wide range of tools, from system setup and optimization to file manipulation and development aids.
+**A Professional Collection of Systems Engineering, Scientific Visualization, and Utility Scripts.**
 
-## 🚀 Features
+`fun007` is a curated repository of high-performance utilities, system automation scripts, and scientific visualization modules. It serves as a centralized toolkit for Linux system administration, materials science modeling, cryptographic security, and efficient file management.
 
-This repository encompasses a variety of projects, each serving a unique purpose:
+## 📂 Project Overview
 
-### System & Configuration
-- **Arch Linux Installation Script**: A comprehensive script that automates the installation of Arch Linux on systems with multiple drives (SSD and HDD), including secure drive wiping, Btrfs encryption with subvolumes, essential package installation, and user environment setup. It also supports CPU-specific microcode packages (Intel/AMD).
-- **configs**: A collection of configuration files for various tools and applications (e.g., Git, GTK, Hyprland, Alacritty, Kitty, Rofi, Termux, Zed, Zsh).
-- **MTU Size Optimiser**: A tool for optimizing the Maximum Transmission Unit (MTU) size on networks.
-- **Pacman Fastest Mirrors**: A script to find the fastest mirrors for Pacman, the package manager for Arch Linux.
-- **Termux Post-Install Automation Script**: Automates the setup of a Termux environment, including GitHub SSH key configuration, dependency installation, font management, and customizations.
+This repository is organized into specialized domains, reflecting a diverse range of engineering disciplines from general relativity visualizations to automated production environment setups.
 
-### File & Data Management
-- **DWNFDCleaner**: A script for cleaning up directories and files.
-- **ISO Verifier**: Scripts for verifying the integrity of ISO files.
-- **PDF Scanner**: A tool for finding keywords within PDF documents.
-- **PDF Splitter**: A script to split PDF documents into multiple files.
-- **Text2PDF**: A binary (made from a z-shell script) that converts plain text files to PDF format.
-- **Wallpaper Organised MetaCleaner**: A script for cleaning metadata from wallpaper images.
-- **Wordlister**: A utility for generating word lists.
+### 🖥️ System Administration & Configuration
 
-### Development & Utilities
-- **Lattice Visualization Module**: A module for visualizing different types of crystal lattices and calculating the Schmid factor.
-- **OPAI CHAT**: An AI-powered chat application.
-- **Passwd Generator**: A secure password generator.
-- **PDF2MP3**: A script to convert PDF documents to MP3 audio files.
-- **PI**: A project related to calculating or using the mathematical constant π (pi).
-- **Python KWS**: A collection of Python keyword-related utilities and scripts.
-- **RandNameGen**: A random name generator.
-- **Youtubedownloader**: A script for downloading videos from YouTube.
+| Tool | Description |
+| :--- | :--- |
+| **ArchInstallScript** | Enterprise-grade automation for Arch Linux deployment. Features multi-drive support (SSD/HDD), Btrfs encryption with subvolumes, CPU microcode detection, and secure drive wiping. |
+| **Termux Post-Install** | A comprehensive `bash` automation suite for Android/Termux environments. Handles SSH key generation (Ed25519), GitHub integration, Nerd Font installation, and shell environment (Zsh/Starship/Neovim) provisioning. |
+| **configs** | Production-ready configuration files ("dotfiles") for high-efficiency workflows. Includes optimized setups for **Hyprland**, **Neovim**, **Alacritty**, **Kitty**, and **Zsh**. |
+| **MTU_size_optimiser** | Network utility to calculate and apply the optimal Maximum Transmission Unit (MTU) size to prevent packet fragmentation and improve throughput. |
+| **ISO_verifier** | Security script to verify the integrity of ISO images against checksums, ensuring safe OS installations. |
 
-## 🛠️ Getting Started
+### 🔭 Scientific Visualization & Computing
 
-Each project within this repository is self-contained in its own directory. To use a specific tool or script, navigate to its respective directory and follow any instructions provided within its `README.md` file (if available) or directly execute the scripts.
+| Tool | Description |
+| :--- | :--- |
+| **BlackHolePLT** | A Python-based general relativity visualization engine. Generates 2D, 3D, and 4D representations of spacetime concepts, including **Schwarzschild/Kerr metrics**, **Penrose diagrams**, **light cones**, and **wormhole embeddings**. |
+| **Lattice_visualization** | Materials science module for visualizing BCC (Body-Centered Cubic) and FCC (Face-Centered Cubic) crystal lattices. Includes functionality to calculate the **Schmid factor** for slip system analysis. |
+| **PI** | High-performance parallel computing demonstration. Estimates the value of $\pi$ using a multi-processed Monte Carlo simulation technique. |
 
-### Prerequisites
+### 🔐 Security & Cryptography
 
-Most scripts are written in Bash or Python and require a Linux-like environment. Specific dependencies for each project will be detailed within their respective directories or scripts.
+| Tool | Description |
+| :--- | :--- |
+| **Passwd_Generator** | Cryptographically secure password generator utilizing Python's `secrets` module. Enforces minimum security standards (12+ chars) and calculates real-time entropy bits. |
+| **Wordlister** | Permutation-based wordlist generator. Creates comprehensive combination lists from input strings for dictionary attack testing or recovery. |
+| **ISO_verifier** | (See System Admin) Ensures binary integrity of downloaded media. |
 
-### Installation
+### 📄 Media & File Operations
 
-As this repository is a collection of independent projects, there isn't a single installation process. Generally, you can clone the repository and then navigate to the desired project's directory:
+| Tool | Description |
+| :--- | :--- |
+| **PDF Suite** | A collection of tools for PDF manipulation: <br>• **PDF_scanner**: Extracts and locates keywords within documents.<br>• **PDF_splitter**: Segments large PDFs into individual files.<br>• **Text2PDF**: Converts plain text streams into formatted PDF documents.<br>• **PDF2MP3**: Converts document text to audio for accessibility. |
+| **Wallpaper_MetaCleaner** | Privacy and organization tool for image collections. Filters images by resolution (deleting thumbnails) and strips all EXIF/metadata using `exiftool`. |
+| **Youtubedownloader** | CLI wrapper for `pytube` to fetch the highest resolution video streams from YouTube. |
+| **DWNFDCleaner** | Interactive CLI utility for targeted file deletion (despite the name implying bulk directory cleaning). |
 
-```bash
-git clone https://github.com/your-username/fun007.git
-cd fun007
-cd <project-directory> # e.g., ArchInstallScript
-```
+### 🤖 AI & Development
 
-Refer to the individual project directories for specific setup instructions.
-
-## 💡 Usage
-
-Usage varies greatly depending on the project. Please refer to the `README.md` file within each project's directory for detailed instructions on how to run and utilize that specific tool or script.
-
-## 🤝 Contributing
-
-Contributions are welcome! If you have ideas for improvements, new features, or bug fixes, please feel free to:
-
-1.  **Fork** this repository.
-2.  **Create a new branch** for your feature or bug fix.
-3.  **Make your changes** and ensure they adhere to the existing code style.
-4.  **Test your changes** thoroughly.
-5.  **Submit a Pull Request** with a clear description of your changes.
-
-Please ensure your contributions align with the project's goals and maintain a high standard of code quality.
-
-## 📄 License
-
-This repository is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+| Tool | Description |
+| :--- | :--- |
+| **OPAI_CHAT** | A lightweight, C-based CLI client for the OpenAI API (`gpt-3.5-turbo`). Demonstrates raw HTTP networking and JSON parsing in C. |
+| **Python_kws** | Developer utility to quickly inspect reserved Python keywords and syntax definitions. |
 
 ---
 
-Thank you for checking out the `fun007` repository! We hope you find these projects useful and we look forward to your contributions.
+## 🚀 Usage & Installation
+
+Since `fun007` is a collection of independent utilities, dependencies vary by tool. Most tools are written in **Python 3** or **Bash**.
+
+### General Setup
+Clone the repository to your local machine:
+
+```bash
+git clone https://github.com/fam007e/fun007.git
+cd fun007
+```
+
+### Example: Running the Black Hole Visualizer
+```bash
+cd BlackHolePLT
+pip install -r requirements.txt  # (If applicable, or install matplotlib/numpy)
+python blackholeplot_v2.py
+```
+
+### Example: Termux Setup
+```bash
+cd Termux_postinstallconfig_script
+bash Termux_PostInstall_automaton.sh
+```
+
+## 🤝 Contributing
+
+Contributions are welcome from the community. To contribute:
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/NewTool`).
+3. Commit your changes with conventional messages.
+4. Push to the branch and open a Pull Request.
+
+## 📄 License
+
+This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for details.
