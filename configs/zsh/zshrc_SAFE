@@ -2,10 +2,8 @@
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
 # Download Zinit, if it's not there yet
-if [ ! -d "$ZINIT_HOME" ]; then
-   mkdir -p "$(dirname $ZINIT_HOME)"
-   git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
-fi
+[ ! -d $ZINIT_HOME ] && mkdir -p "$(dirname $ZINIT_HOME)"
+[ ! -d $ZINIT_HOME/.git ] && git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
 
 # Source/Load zinit
 source "${ZINIT_HOME}/zinit.zsh"
@@ -130,7 +128,7 @@ alias ls='eza'
 alias ll='eza -alh'
 alias tree='eza --tree'
 alias clear-pacman-cache='sudo pacman -Sc'
-alias clear-cache='yay -Sc'
+alias clear-cache='sudo find /var/cache/pacman/pkg/ -maxdepth 1 -type d -name "download-*" -exec rm -r {} + && yay -Sc'
 # alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
 alias rm='rm -f'
 alias rmd='rm -rf'
@@ -673,7 +671,7 @@ cloudflare_dns() {
 
 # Function to switch to Quad9 DNS
 quad9_dns() {
-    printf "nameserver 9.9.9.11\nnameserver 149.112.112.11\n" | sudo tee /etc/resolv.conf > /dev/null
+    printf "nameserver 2620:fe::11\nnameserver 2620:fe::fe:11\nnameserver 9.9.9.11\nnameserver 149.112.112.11\n" | sudo tee /etc/resolv.conf > /dev/null
     printf "Switched to Quad9 DNS\n"
 }
 
@@ -1550,3 +1548,4 @@ if [ -f /usr/bin/fastfetch ]; then
     fastfetch
 fi
 eval "$(oh-my-posh init zsh --config $HOME/Github/fun007/configs/illusi0n_mod.omp.json)"
+[ -f /opt/miniconda3/etc/profile.d/conda.sh ] && source /opt/miniconda3/etc/profile.d/conda.sh
