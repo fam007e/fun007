@@ -23,8 +23,8 @@ def get_grade(percentage):
         (0, "U"),
     ]
 
-    # Round the percentage to whole number (standard rounding: 0.5+ rounds up)
-    rounded_percentage = round(percentage)
+    # Round the percentage to whole number (0.5 always rounds up)
+    rounded_percentage = int(percentage + 0.5)
 
     # Apply leniency: if within 2% of next boundary and below 80%
     # Check against the rounded percentage
