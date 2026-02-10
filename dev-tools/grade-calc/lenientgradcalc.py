@@ -1,112 +1,100 @@
 import os
-import math
+from decimal import Decimal, ROUND_HALF_UP
 
 
 def clear_screen():
-    # Works on Windows, Mac, Linux
     os.system("cls" if os.name == "nt" else "clear")
 
 
-def get_grade(percentage):
-    """
-    Determine grade based on percentage with leniency for borderline cases.
-    If percentage is within 2% of the next grade boundary and < 80%, round up.
-    """
-    # Grade boundaries: (threshold, grade)
-    grade_boundaries = [
-        (90, "A*"),
-        (80, "A"),
-        (70, "B"),
-        (60, "C"),
-        (50, "D"),
-        (40, "E"),
-        (0, "U"),
-    ]
+GRADE_BOUNDS = [
+    (90, "A*"),
+    (80, "A"),
+    (70, "B"),
+    (60, "C"),
+    (50, "D"),
+    (40, "E"),
+    (0, "U"),
+]
 
-    # Round the percentage to whole number (0.5 always rounds up)
-    rounded_percentage = int(percentage + 0.5)
+LENIENCY_BOUNDS = {40, 50, 60, 70, 80}
 
-    # Apply leniency: if within 2% of next boundary and below 80%
-    # Check against the rounded percentage
-    if rounded_percentage < 80:
-        for threshold in [40, 50, 60, 70, 80]:
-            if threshold - 2 <= rounded_percentage < threshold:
-                rounded_percentage = threshold
+
+def adjust_percentage(obtained, total):
+    percentage = (obtained / total) * Decimal(100)
+
+    rounded = int(percentage.quantize(0, rounding=ROUND_HALF_UP))
+
+    if rounded < 80:
+        for b in LENIENCY_BOUNDS:
+            if b - 2 <= rounded < b:
+                rounded = b
                 break
 
-    # Determine grade based on rounded percentage
-    for threshold, grade in grade_boundaries:
-        if rounded_percentage >= threshold:
-            return grade, rounded_percentage
+    return rounded, percentage
+
+
+def get_grade(adjusted):
+    for threshold, grade in GRADE_BOUNDS:
+        if adjusted >= threshold:
+            return grade
 
 
 def main():
     print("=== Grade Calculator ===\n")
 
-    # Get total marks once at the start
     while True:
-        total_marks_input = input("Enter total marks for this test: ")
         try:
-            total_marks = int(total_marks_input)
-            if total_marks <= 0:
-                print("Total marks must be greater than 0.\n")
-                continue
-            break
+            total = int(input("Enter total marks for this test: "))
+            if total > 0:
+                break
         except ValueError:
-            print("Please enter a valid number.\n")
+            pass
+        print("Total marks must be greater than 0.\n")
 
-    print(f"\nTotal marks set to: {total_marks}")
+    print(f"\nTotal marks set to: {total}")
     print("Enter marks lost (or 'xx' to quit, 'change' to set new total marks)\n")
 
-    # Loop for entering multiple marks
     while True:
-        marks_input = input(f"Enter marks lost out of {total_marks}: ")
+        inp = input(f"Enter marks lost out of {total}: ").lower()
 
-        if marks_input.lower() == "xx":
+        if inp == "xx":
             print("Exiting... Goodbye!")
             break
 
-        if marks_input.lower() == "change":
-            # Allow changing total marks
+        if inp == "change":
             while True:
-                total_marks_input = input("Enter new total marks: ")
                 try:
-                    total_marks = int(total_marks_input)
-                    if total_marks <= 0:
-                        print("Total marks must be greater than 0.\n")
-                        continue
-                    print(f"Total marks changed to: {total_marks}\n")
-                    break
+                    total = int(input("Enter new total marks: "))
+                    if total > 0:
+                        print(f"Total marks changed to: {total}\n")
+                        break
                 except ValueError:
-                    print("Please enter a valid number.\n")
+                    pass
+                print("Total marks must be greater than 0.\n")
             continue
 
         try:
-            marks_lost = float(marks_input)
-            if marks_lost < 0 or marks_lost > total_marks:
-                print(f"Marks lost must be between 0 and {total_marks}.\n")
-                continue
+            lost = Decimal(inp)
+            if not (0 <= lost <= total):
+                raise ValueError
 
-            # Calculate result
-            marks_obtained = total_marks - marks_lost
-            percentage = (marks_obtained / total_marks) * 100
-            grade, adjusted_percentage = get_grade(percentage)
+            obtained = Decimal(total) - lost
+            adjusted, raw = adjust_percentage(obtained, Decimal(total))
+            grade = get_grade(adjusted)
 
-            # Clear screen before printing result
             clear_screen()
 
-            # Display results
             print("=" * 50)
-            print(f"Total Marks: {total_marks}")
-            print(f"Marks Obtained: {marks_obtained}")
-            print(f"Marks Lost: {marks_lost}")
-            print(f"Raw Percentage: {percentage:.2f}%")
-            print(f"Adjusted Percentage: {adjusted_percentage}%")
+            print(f"Total Marks: {total}")
+            print(f"Marks Obtained: {obtained}")
+            print(f"Marks Lost: {lost}")
+            print(f"Raw Percentage: {raw:.2f}%")
+            print(f"Adjusted Percentage: {adjusted}%")
             print(f"Grade: {grade}")
             print("=" * 50)
             print()
 
-        except ValueError:
+        except:
             print("Please enter a valid number.\n")
 
 
