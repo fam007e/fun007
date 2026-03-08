@@ -1,99 +1,76 @@
-# Arch Linux Installation Script
+# fun007 Arch Linux Installer
 
 ## Overview
 
-`archinstall_interactive.sh` is an automated script for installing Arch Linux with support for BTRFS or LUKS-encrypted BTRFS filesystems, and either the DWM (Dynamic Window Manager) or Hyprland desktop environments. It configures a minimal system with essential packages, graphics drivers, and customizations for the DWM setup from `https://github.com/fam007e/DWM`. The script supports SDDM for autologin, Timeshift for BTRFS snapshots, and a secondary disk for data storage.
+`archinstall_interactive.sh` is a modular, automated installer designed to deploy a "Ready-to-Work" Arch Linux system. It specializes in **LUKS-encrypted BTRFS** setups and is tightly integrated with the `fun007` ecosystem.
+
+Unlike traditional monolithic installers, this suite follows a phased approach:
+1.  **Hardware & Disk Phase**: Handles partitioning, LUKS encryption, and BTRFS subvolume mapping.
+2.  **Bootstrap Phase**: Installs the core Arch Linux base and kernel.
+3.  **fun007 Handover**: Clones the `fun007` repository and executes the `zshrc_pkg_prep.sh` script to configure your shell, packages, and desktop.
 
 ## Features
 
-- **Filesystem Options**: Supports BTRFS, LUKS-encrypted BTRFS, or ext4.
-- **Desktop Environments**: Installs DWM (`fam007e/DWM`) or Hyprland.
-- **DWM Customization**:
-  - Clones `https://github.com/fam007e/DWM` to `/home/$USERNAME/DWM`.
-  - Builds `picom`, `slstatus`, and `dwmblocks` in `/home/$USERNAME/dev`.
-  - Installs dependencies: `xorg`, `libx11`, `libxinerama`, `libxft`, `libxpm`, `libxrandr`, `libxcb`, `imlib2`, `fontconfig`, `noto-fonts-emoji`, `flameshot`, `dunst`, `alacritty`, `rofi`, `alsa-utils`, `pulseaudio`, `playerctl`, `vlc`, `slock`, `thunar`, `feh`, `dbus`, `polkit`, `mate-polkit`, `bc`, `jq`.
-  - Installs AUR packages: `nerd-fonts-complete`, `brave-browser-nightly`, `tor-browser`, `looking-glass-client`, `zed-git`.
-  - Sets up `zed` symlink (`/usr/bin/zeditor` to `/home/$USERNAME/.local/bin/zed`).
-  - Configures DWM scripts in `/home/$USERNAME/DWM/scripts/`.
-- **System Configuration**: Sets up timezone, locale, hostname, user account, NetworkManager, GRUB, microcode, and graphics drivers (NVIDIA, AMD, or Intel).
-- **Secondary Disk**: Optionally configures a data disk with bind mounts for user directories.
-- **Timeshift**: Configures BTRFS snapshots with daily, weekly, and boot schedules.
-- **SDDM**: Optional autologin with SDDM for DWM or Hyprland.
+- **Storage Architecture**: 
+  - Supports standard **BTRFS** or **LUKS-on-BTRFS**.
+  - Creates the `@`, `@home`, `@var`, `@tmp`, and `@.snapshots` subvolume layout required for **Timeshift**.
+- **Hardware Optimization**: 
+  - Automatic GPU detection (NVIDIA/AMD/Intel).
+  - Handles NVIDIA-LTS driver mapping if the LTS kernel is selected.
+  - Applies `zstd` compression and `noatime` mount options for SSD longevity.
+- **fun007 Integration**: 
+  - Automatically clones your dotfiles and runs the environment preparation script.
+  - Sets up your Zsh configuration, Oh-My-Posh, and essential CLI tools.
+- **Reliable Boot**: 
+  - Handles UUID-based LUKS mapping in GRUB.
+  - Configures the necessary `encrypt` hooks in `mkinitcpio`.
 
 ## Requirements
 
-- **Environment**: Must be run from an Arch Linux ISO (live environment).
-- **Root Access**: Run as root (`sudo ./archinstall_interactive.sh config.json`).
-- **Internet Connection**: Required for package installation and AUR builds.
-- **Disk Space**: At least 20GB for the root partition; additional space for AUR builds (e.g., `nerd-fonts-complete`, `zed-git`).
-- **Configuration File**: A `config.json` file with the following fields:
-  ```json
-  {
-    "username": "your_username",
+- **Environment**: Must be run from an Arch Linux Live ISO.
+- **Dependencies**: The script will automatically install `jq` and `reflector` in the live environment.
+- **Internet**: Required for `pacstrap` and cloning the `fun007` repository.
+
+## Installation Steps
+
+### 1. Generate Configuration
+Run the interactive wizard to define your system identity and disk layout:
+```bash
+sudo ./generate_config.sh
+```
+
+### 2. Run the Installer
+Execute the main installer using the generated `config.json`:
+```bash
+sudo ./archinstall_interactive.sh config.json
+```
+
+### 3. Log Tracking
+The installation process is logged in real-time to:
+`/tmp/arch_install_YYYYMMDD_HHMMSS.log`
+
+## Configuration Schema
+
+The `config.json` produced by the wizard includes:
+```json
+{
+    "username": "your_user",
     "password": "your_password",
-    "hostname": "your_hostname",
+    "hostname": "your_host",
     "timezone": "Region/City",
-    "keymap": "us",
-    "filesystem": "btrfs|ext4|luks",
-    "desktop": "dwm|hyprland",
-    "use_sddm": "y|n",
-    "disk": "/dev/sdX|/dev/nvmeXn1",
-    "secondary_disk": "/dev/sdY|/dev/nvmeXn1|",
-    "is_ssd": "y|n",
-    "kernel": "linux|linux-lts",
-    "luks_password": "your_luks_password"
-  }
-  ```
-  Use `generate_config.sh` to create this file.
+    "disk": "/dev/nvme0n1",
+    "filesystem": "luks|btrfs",
+    "luks_password": "your_secret_password",
+    "kernel": "linux|linux-lts"
+}
+```
 
-## Usage
+## Post-Installation
 
-- **Boot Arch Linux ISO**: Boot into the Arch Linux live environment.
-- **Prepare Config**: Prepare the configuration file `config.json` with the desired settings.
-- **Run generate_config.sh**: Run `generate_config.sh` to create the `config.json` file.
-- **Edit config.json**: Edit the `config.json` file with your desired settings (e.g., `desktop="dwm"`, `filesystem="btrfs"`).
-- **Run Script**: Run the script with
-  ```sh
-  ./archinstall_interactive.sh config.json
-  ```
-  - The script will prompt for confirmation before formatting disks.
-  - Logs are saved to /tmp/arch_install_YYYYMMDD_HHMMSS.log.
-- **Reboot**: The system reboots automatically after installation.
+Once the system reboots:
+1.  **Shell**: Your Zsh environment will be ready with the `fun007` prompt.
+2.  **Snapshots**: Timeshift is pre-installed. Run `sudo timeshift --list` to verify.
+3.  **Packages**: The system will have all essential CLI tools (eza, bat, fzf, zoxide) pre-configured via the `zshrc_pkg_prep.sh` routine.
 
-## Post-Installation Steps
-
-- **Verify DWM Setup** (if `desktop="dwm"`):
-  - Log in via `SDDM` (if `use_sddm="y"`) or run startx from the console.
-  - Check autostart programs: `alacritty`, `dunst`, `flameshot`, `picom`, `slstatus`, `dwmblocks`.
-  - Test keybindings (from `config.def.h`):
-    - `Mod4+r`: Launch `rofi -show drun`.
-    - `Mod4+z`: Launch `zed`.
-    - `Mod4+Shift+w`: Launch `brave-browser-nightly`.
-    - `Mod4+Shift+v`: Launch `vlc`.
-  - Verify scripts in `/home/$USERNAME/DWM/scripts/` (e.g., `wallpapersSS`, `status`).
-- **Add Wallpapers**:
-  - The script creates `/home/$USERNAME/Pictures/Wallpapers/` but does not populate it.
-  - Add wallpaper images to this directory for use with `wallpapersSS` and `feh`.
-- **Check Timeshift** (if `filesystem="btrfs"` or `luks`):
-  - Run `sudo timeshift --list` to verify snapshot schedules.
-- **Troubleshooting**:
-  - **Missing Scripts**: If `/home/$USERNAME/DWM/scripts/` is empty, manually add scripts (`wallpapersSS`, `status`, `sounds`, `wifimenu`, `powermenu`, `protonrestart`) from the DWM repository or your source.
-  - **Zed Failure**: If `Mod4+z` fails, verify `/usr/bin/zeditor` exists and the symlink `/home/$USERNAME/.local/bin/zed` is correct.
-  - **AUR Build Issues**: If `zed-git` or `nerd-fonts-complete` fails, ensure sufficient disk space and network connectivity. Re-run `yay -S zed-git` manually.
-  - **Vulkan Drivers**: If `zed` crashes, install GPU-specific Vulkan drivers (e.g., `vulkan-intel`, `vulkan-radeon`).
-
-## Notes
-
-- **DWM Scripts**: The script assumes `https://github.com/fam007e/DWM` includes a `scripts/` directory. If missing, keybindings and autostart programs may fail.
-- **Zed Editor**: `zed-git` installs zeditor in `/usr/bin/`. A symlink to `/home/$USERNAME/.local/bin/zed` is created for compatibility with `config.def.h`.
-- **AUR Builds**: Building `zed-git` and `nerd-fonts-complete` may take significant time and disk space.
-- **Vulkan Drivers**: The script installs `vulkan-icd-loader` and `vulkan-tools`. Install GPU-specific drivers if needed.
-- **Dwmblocks**: Uses `torrinfail/dwmblocks`. If a different fork is required, update the script with the correct repository URL.
-
-## License
-
-This script is provided under the MIT License. See the [fam007e/DWM](https://github.com/fam007e/DWM) repository for its license details.
-
-## Support
-
-For issues or customizations (e.g., alternative `dwmblocks` fork, `protonvpn-app` integration), check the log file in `/tmp/` or contact the script maintainer.
+## Support & Troubleshooting
+If the installation fails during the **Chroot Phase**, check the logs in the live environment's `/tmp/` directory. The most common failures are network timeouts during the AUR build phase of the `fun007` handover.

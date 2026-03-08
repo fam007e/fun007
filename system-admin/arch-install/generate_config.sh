@@ -1,145 +1,58 @@
 #!/bin/bash
+# ==============================================================================
+# fun007 Configuration Generator
+# Purpose: Interactive wizard to generate config.json for the Arch Installer.
+# ==============================================================================
 
-# Function to detect if a drive is an SSD
-is_ssd() {
-    local drive="$1"
-    [ -e "/sys/block/${drive##*/}/queue/rotational" ] && [ "$(cat "/sys/block/${drive##*/}/queue/rotational")" = "0" ]
-}
+set -e
 
-collect_user_input() {
-    local valid_filesystems=("btrfs" "ext4" "luks")
-    local valid_kernels=("linux" "linux-lts")
-    local valid_desktops=("dwm" "hyprland" "none")
+log() { echo -e "\033[1;34m[CONFIG]\033[0m $1"; }
 
-    echo "Collecting system configuration..."
-    
-    # Username validation
-    while true; do
-        read -r -p "Enter username (lowercase, alphanumeric): " username
-        if [[ "$username" =~ ^[a-z][a-z0-9]*$ ]]; then break; else echo "Invalid username"; fi
-    done
+# Pre-requisite: jq
+command -v jq >/dev/null 2>&1 || sudo pacman -Sy --noconfirm jq
 
-    # Password input
-    while true; do
-        read -r -s -p "Enter password: " password
-        echo
-        read -r -s -p "Confirm password: " password_confirm
-        echo
-        [ "$password" = "$password_confirm" ] && break
-        echo "Passwords do not match. Try again."
-    done
+echo "--------------------------------------------------"
+echo "    Arch Linux Installation Config Wizard         "
+echo "--------------------------------------------------"
 
-    # Hostname validation
-    while true; do
-        read -r -p "Enter hostname (alphanumeric, no spaces): " hostname
-        if [[ "$hostname" =~ ^[a-zA-Z0-9-]+$ ]]; then break; else echo "Invalid hostname"; fi
-    done
+# 1. Identity
+read -rp "Enter username: " username
+read -rs -p "Enter password: " password; echo
+read -rp "Enter hostname: " hostname
+read -rp "Enter timezone (e.g., Asia/Dhaka): " timezone
 
-    # Timezone validation
-    while true; do
-        read -r -p "Enter timezone (e.g., Europe/London): " timezone
-        if [ -f "/usr/share/zoneinfo/$timezone" ]; then break; else echo "Invalid timezone"; fi
-    done
+# 2. Disk Selection
+lsblk -dpno NAME,SIZE,MODEL
+read -rp "Enter installation disk (e.g., /dev/nvme0n1): " disk
 
-    # Keyboard layout
-    read -r -p "Enter keyboard layout (default: us): " keymap
-    keymap=${keymap:-us}
+# 3. Filesystem & Encryption
+echo "Select Filesystem Type:"
+echo "1) btrfs (Standard)"
+echo "2) luks (Encrypted BTRFS)"
+read -rp "Choice [1-2]: " fs_choice
+case $fs_choice in
+    2) filesystem="luks"; read -rs -p "Enter LUKS encryption password: " luks_password; echo ;;
+    *) filesystem="btrfs"; luks_password="" ;;
+esac
 
-    # Filesystem selection
-    echo "Select filesystem:"
-    select filesystem in "${valid_filesystems[@]}"; do
-        if [[ ${valid_filesystems[*]} =~ ${filesystem} ]]; then break; fi
-    done
+# 4. Kernel
+echo "Select Kernel:"
+echo "1) linux (Stable/Latest)"
+echo "2) linux-lts (Long Term Support)"
+read -rp "Choice [1-2]: " k_choice
+[[ "$k_choice" == "2" ]] && kernel="linux-lts" || kernel="linux"
 
-    # Desktop environment selection
-    echo "Select desktop environment:"
-    select desktop in "${valid_desktops[@]}"; do
-        if [[ ${valid_desktops[*]} =~ ${desktop} ]]; then break; fi
-    done
+# Generate JSON
+jq -n \
+  --arg un "$username" \
+  --arg pw "$password" \
+  --arg hn "$hostname" \
+  --arg tz "$timezone" \
+  --arg dk "$disk" \
+  --arg fs "$filesystem" \
+  --arg lp "$luks_password" \
+  --arg kn "$kernel" \
+  '{username: $un, password: $pw, hostname: $hn, timezone: $tz, disk: $dk, filesystem: $fs, luks_password: $lp, kernel: $kn}' \
+  > config.json
 
-    # SDDM login manager
-    read -r -p "Install SDDM login manager? (y/n): " use_sddm
-    use_sddm=${use_sddm:-n}
-
-    # Disk selection and validation
-    while true; do
-        read -r -p "Enter disk for installation (e.g., /dev/sda): " disk
-        if [ -b "$disk" ]; then break; else echo "Error: $disk is not a valid block device"; fi
-    done
-
-    # SSD detection
-    if is_ssd "$disk"; then
-        echo "Detected $disk as an SSD"
-        is_ssd="y"
-    else
-        echo "Detected $disk as a regular HDD"
-        is_ssd="n"
-    fi
-
-    # Secondary disk
-    read -r -p "Use secondary disk for /home? (y/n): " use_secondary_disk
-    if [ "$use_secondary_disk" = "y" ]; then
-        while true; do
-            read -r -p "Enter secondary disk (e.g., /dev/sdb): " secondary_disk
-            if [ -b "$secondary_disk" ]; then break; else echo "Error: $secondary_disk is not a valid block device"; fi
-        done
-    else
-        secondary_disk=""
-    fi
-
-    # Kernel selection
-    echo "Select kernel:"
-    select kernel in "${valid_kernels[@]}"; do
-        if [[ ${valid_kernels[*]} =~ ${kernel} ]]; then break; fi
-    done
-
-    # LUKS password if needed
-    if [ "$filesystem" = "luks" ]; then
-        while true; do
-            read -r -s -p "Enter LUKS password: " luks_password
-            echo
-            read -r -s -p "Confirm LUKS password: " luks_password_confirm
-            echo
-            [ "$luks_password" = "$luks_password_confirm" ] && break
-            echo "Passwords do not match. Try again."
-        done
-    else
-        luks_password=""
-    fi
-}
-
-generate_json_config() {
-    cat <<EOF > config.json
-{
-    "username": "$username",
-    "password": "$password",
-    "hostname": "$hostname",
-    "timezone": "$timezone",
-    "keymap": "$keymap",
-    "filesystem": "$filesystem",
-    "desktop": "$desktop",
-    "use_sddm": "$use_sddm",
-    "disk": "$disk",
-    "secondary_disk": "$secondary_disk",
-    "is_ssd": "$is_ssd",
-    "kernel": "$kernel",
-    "luks_password": "$luks_password"
-}
-EOF
-}
-
-# Check if running as root
-if [ "$(id -u)" -ne 0 ]; then
-    echo "This script must be run as root"
-    exit 1
-fi
-
-# Check if jq is installed
-if ! command -v jq >/dev/null 2>&1; then
-    echo "Installing jq for JSON parsing"
-    pacman -Sy --noconfirm jq
-fi
-
-collect_user_input
-generate_json_config
-echo "Configuration saved to config.json"
+log "Success! config.json generated. Now run: sudo ./archinstall_interactive.sh config.json"
