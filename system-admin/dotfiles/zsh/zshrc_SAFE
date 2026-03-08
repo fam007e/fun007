@@ -1,3 +1,4 @@
+typeset -U path PATH
 # Set the directory we want to store zinit and plugins
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
 
@@ -16,9 +17,14 @@ zinit light zsh-users/zsh-syntax-highlighting
 zinit light zsh-users/zsh-completions
 zinit light zsh-users/zsh-autosuggestions
 zinit light Aloxaf/fzf-tab
-zinit light sobolevn/wakatime-zsh-plugin
+
+# Tmux plugin auto-start options
+export ZSH_TMUX_AUTOSTART=false
+export ZSH_TMUX_AUTOCONNECT=true
+export ZSH_TMUX_FIXTERM=false
 
 # Add in snippets
+zinit snippet OMZP::fzf
 zinit snippet OMZP::git
 zinit snippet OMZP::sudo
 zinit snippet OMZP::archlinux
@@ -129,7 +135,6 @@ alias ll='eza -alh'
 alias tree='eza --tree'
 alias clear-pacman-cache='sudo pacman -Sc'
 alias clear-cache='sudo find /var/cache/pacman/pkg/ -maxdepth 1 -type d -name "download-*" -exec rm -r {} + && yay -Sc'
-# alias passwdGEN='python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py -c -n -s 19 | grep "Generated Password:" | awk "{print \$3}" | tee >(pbcopy)'
 alias rm='rm -f'
 alias rmd='rm -rf'
 alias ping='ping -c 10'
@@ -184,7 +189,7 @@ passwdGEN() {
     fi
 
     # Run the password generator and extract the password
-    python3 $HOME/Github/fun007/Passwd_Generator/passwd_gen.py $case_variance $numbers $special "$length" | grep "Generated Password:" | awk '{for(i=3;i<=NF;i++)printf "%s", $i}' | tee >(pbcopy)
+    python3 $HOME/Github/fun007/security/password-gen/passwd_gen.py $case_variance $numbers $special "$length" | grep "Generated Password:" | awk '{for(i=3;i<=NF;i++)printf "%s", $i}' | tee >(pbcopy)
     echo  # Add newline after password
 }
 
@@ -1536,16 +1541,32 @@ EOF
 alias tbd="torrentbd_news"
 
 
-#export PATH="$PATH:$HOME/Github/metasploit-framework"
-export PATH=$HOME/.local/bin:$PATH
-export PATH=$HOME/.cargo/bin:$PATH
-export GOBIN=`go env GOPATH`/bin
-export PATH=$PATH:$GOBIN
-#alias msfconsole="pushd $HOME/Github/metasploit-framework && ./msfconsole && popd"
-export VISUAL=nano
-export EDITOR=nano
+
+# --- Path Configuration ---
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export ANDROID_HOME=$HOME/Android/Sdk
+export ANDROID_SDK_ROOT=$HOME/Android/Sdk
+export GOBIN=$(go env GOPATH)/bin
+
+# Add user-specific bins to path array (ensures precedence and uniqueness)
+path=(
+  "$HOME/.local/bin"
+  "$HOME/.wakatime"
+  "$GOBIN"
+  "$ANDROID_HOME/emulator"
+  "$ANDROID_HOME/platform-tools"
+  "$path[@]"
+)
+
+# Add .cargo/bin only if it exists
+[[ -d "$HOME/.cargo/bin" ]] && path=("$HOME/.cargo/bin" "$path[@]")
+
+export PATH
+# --------------------------
+
+
 if [ -f /usr/bin/fastfetch ]; then
     fastfetch
 fi
-eval "$(oh-my-posh init zsh --config $HOME/Github/fun007/configs/illusi0n_mod.omp.json)"
+eval "$(oh-my-posh init zsh --config $HOME/Github/fun007/system-admin/dotfiles/illusi0n_mod.omp.json)"
 [ -f /opt/miniconda3/etc/profile.d/conda.sh ] && source /opt/miniconda3/etc/profile.d/conda.sh

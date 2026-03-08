@@ -1,0 +1,107 @@
+/**********
+ * Thunar *
+ **********/
+
+/* thunar toolbar */
+.thunar toolbar {
+  background-color: #2E3440 !important; /* DWM normbgcolor */
+}
+
+/* buttons in toolbar */
+.thunar toolbar.horizontal button image {
+  -gtk-icon-transform: scale(0.72) !important;
+}
+
+/* sidebar styling */
+scrolledwindow.sidebar treeview.view,
+.thunar-side-pane treeview.view,
+.sidebar treeview.view {
+  background: #3B4252 !important; /* DWM normbordercolor */
+  color: #D8DEE9 !important;
+  padding: 1.5px !important;
+}
+
+/* selected item in the sidebar */
+window.thunar paned > scrolledwindow treeview.view:selected,
+GtkFileChooserDialog .sidebar treeview.view:selected,
+GtkFileChooserDialog placessidebar treeview.view:selected {
+  background: #434C5E !important; /* DWM selbgcolor */
+  color: #88C0D0 !important;      /* DWM selfgcolor */
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* hovered item in the sidebar */
+window.thunar paned > scrolledwindow treeview.view:hover,
+GtkFileChooserDialog .sidebar treeview.view:hover,
+GtkFileChooserDialog placessidebar treeview.view:hover {
+  background: rgba(143, 188, 187, 0.7) !important; /* Hover color adjusted */
+  color: #2E3440 !important; /* DWM normbgcolor */
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Ensure vertical column names are visible */
+GtkFileChooserDialog treeview.view cell,
+GtkFileChooserDialog treeview.view label,
+window.thunar treeview.view cell,
+window.thunar treeview.view label {
+  color: inherit !important;
+}
+
+/* path-bar of thunar */
+window.thunar toolbar#location-toolbar > toolitem > widget > widget.linked.path-bar .path-bar-button,
+.thunar toolbar .path-bar-button {
+  color: #88C0D0 !important; /* DWM normfgcolor */
+  border-radius: 4px !important;
+  text-shadow: none !important;
+  box-shadow: none !important;
+  border: 1px solid #3B4252 !important; /* DWM normbordercolor */
+  background-color: #2E3440 !important; /* DWM normbgcolor */
+  border-radius: 0 !important;
+  border-right: 0.5px solid #3B4252 !important; /* DWM normbordercolor */
+  box-shadow: none !important;
+  min-height: 20px !important;
+  padding: 3px 4px !important;
+}
+
+/* path-bar button hover and active states */
+window.thunar toolbar#location-toolbar > toolitem > widget > widget.linked.path-bar .path-bar-button:hover,
+.thunar toolbar .path-bar-button:hover {
+  color: #8FBCBB !important; /* Hover color */
+}
+window.thunar toolbar#location-toolbar > toolitem > widget > widget.linked.path-bar .path-bar-button:checked,
+.thunar toolbar .path-bar-button:checked {
+  color: #FFFFFF !important;
+  outline-color: rgba(255, 255, 255, 0.3) !important;
+  background-color: rgba(143, 188, 187, 0.7) !important; /* Active background color */
+  text-shadow: none !important;
+}
+
+/* thunar sidepane selected entry */
+.caja-notebook .entry {
+  background: #3B4252 !important; /* DWM normbordercolor */
+  color: #88C0D0 !important;      /* DWM normfgcolor */
+}
+.caja-notebook .entry:selected {
+  background: #8FBCBB !important; /* Highlight color */
+  color: #2E3440 !important;      /* DWM normbgcolor */
+}
+
+/* Action bar buttons (Trash) */
+window.thunar actionbar button {
+  background-color: #3B4252 !important;
+  color: #88C0D0 !important;
+  border: 1px solid #434C5E !important;
+  border-radius: 4px !important;
+  padding: 4px 12px !important;
+}
+
+window.thunar actionbar button:hover {
+  background-color: #434C5E !important;
+  color: #FFFFFF !important;
+}
+
+window.thunar actionbar button label {
+  color: inherit !important;
+}
