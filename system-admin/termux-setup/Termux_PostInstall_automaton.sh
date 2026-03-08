@@ -1,580 +1,235 @@
 #!/data/data/com.termux/files/usr/bin/env bash
 
-# Enhanced Termux Post-Installation Configuration Script
+# ==============================================================================
+# Termux Post-Installation Automaton
+# Purpose: Bootstraps a fresh Termux environment with fun007 dotfiles & tools.
+# Structure:
+#   1. System Update & Essential Tools
+#   2. GitHub/SSH Identity Setup
+#   3. fun007 Repo Cloning (The Source of Truth)
+#   4. Package & Tool Installation (fzf, adb, etc.)
+#   5. Configuration Deployment (Bash, Starship, Fastfetch)
+#   6. Advanced Nerd Font Management (GitHub API + Interactive Selection)
+#   7. Visual Customization (Themes & Finalization)
+# ==============================================================================
 
-set -e  # Exit on any error
+set -e
 
-# Colors for output
+# --- Configuration & Styling ---
+REPO_URL="git@github.com:fam007e/fun007.git"
+LOCAL_REPO="$HOME/dev/fun007"
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+NC='\033[0m'
+PAGER="${PAGER:-less -R -X -F}"
 
-# Logging function
-log() {
-    echo -e "${GREEN}[INFO]${NC} $1"
-}
+log() { echo -e "${GREEN}[INFO]${NC} $1"; }
+warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+error() { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
-}
+# --- Helper: Print Fonts in Columns ---
+print_fonts_in_columns() {
+    local fonts=("$@")
+    local term_width=$(tput cols)
+    local max_len=0
+    for font in "${fonts[@]}"; do
+        (( ${#font} > max_len )) && max_len=${#font}
+    done
 
-error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-}
+    local col_width=$((max_len + 6))
+    local columns=$((term_width / col_width))
+    (( columns == 0 )) && columns=1
+    local total=${#fonts[@]}
+    local rows=$(( (total + columns - 1) / columns ))
 
-# Function to install essential packages first
-install_essential_packages() {
-    log "Installing essential packages required for this script..."
-    
-    # Ensure basic functionality
-    touch ~/.hushlogin
-    
-    # Update repositories and upgrade system
-    log "Updating package repositories..."
-    termux-change-repo
-    apt update && apt upgrade -y
-    
-    # Install essential packages needed for script functionality
-    log "Installing core packages..."
-    apt install -y \
-        bash \
-        curl \
-        wget \
-        git \
-        openssh \
-        termux-api \
-        termux-services \
-        termux-tools \
-        which \
-        tar \
-        xz-utils \
-        build-essential \
-        cmake \
-        pkg-config
-    
-    # Setup storage access
-    log "Setting up storage access..."
-    termux-setup-storage
-    
-    # Create necessary directories
-    mkdir -p ~/.termux ~/.local/share/fonts ~/tmp ~/.config
-}
-
-# Function to add additional repositories
-setup_repositories() {
-    log "Setting up additional repositories..."
-    apt install -y \
-        root-repo \
-        x11-repo \
-        tur-repo \
-        glibc-repo \
-        myrepos \
-        termux-apt-repo
-    
-    apt update
-}
-
-# Function to prompt for GitHub configuration
-setup_git_config() {
-    log "Setting up Git and SSH configuration..."
-    
-    read -rp "Enter your GitHub username: " username
-    read -rp "Enter your GitHub email address: " email
-    
-    # Configure git globally
-    git config --global user.name "$username"
-    git config --global user.email "$email"
-    git config --global init.defaultBranch main
-    
-    echo "Choose your SSH key type:"
-    echo "1. Ed25519 (recommended)"
-    echo "2. RSA (legacy)"
-    read -rp "Enter your choice (1 or 2): " key_type
-
-    case $key_type in
-        1) key_algo="ed25519" ;;
-        2) key_algo="rsa" ;;
-        *)
-            error "Invalid choice. Exiting."
-            exit 1
-            ;;
-    esac
-
-    read -rp "Enter a custom SSH key name (leave blank for default): " key_name
-    ssh_key_path="${HOME}/.ssh/${key_name:-id_$key_algo}"
-    
-    # Create .ssh directory if it doesn't exist
-    mkdir -p ~/.ssh
-    chmod 700 ~/.ssh
-
-    # Generate SSH key
-    if [[ "$key_algo" == "ed25519" ]]; then
-        ssh-keygen -t ed25519 -C "$email" -f "$ssh_key_path" -N ""
-    else
-        ssh-keygen -t rsa -b 4096 -C "$email" -f "$ssh_key_path" -N ""
-    fi
-
-    # Start ssh-agent and add key
-    eval "$(ssh-agent -s)"
-    ssh-add "$ssh_key_path"
-    
-    # Set proper permissions
-    chmod 600 "$ssh_key_path"
-    chmod 644 "${ssh_key_path}.pub"
-
-    log "SSH key generation completed."
-}
-
-# Copy SSH public key to clipboard and prompt user to add it to GitHub
-copy_and_confirm_ssh_key() {
-    log "Copying SSH public key to clipboard..."
-    
-    # Copy the generated public key to the clipboard
-    cat "${ssh_key_path}.pub" | termux-clipboard-set
-    log "Your SSH public key has been copied to the clipboard."
-    
-    echo ""
-    echo -e "${BLUE}============================================${NC}"
-    echo "IMPORTANT: Add your SSH key to GitHub"
-    echo -e "${BLUE}============================================${NC}"
-    echo "1. Go to https://github.com/settings/keys"
-    echo "2. Click 'New SSH key'"
-    echo "3. Paste the key from your clipboard"
-    echo "4. Give it a title (e.g., 'Termux Device')"
-    echo "5. Click 'Add SSH key'"
-    echo -e "${BLUE}============================================${NC}"
-    echo ""
-
-    while true; do
-        read -rp "Have you added your SSH public key to your GitHub account? (y/n): " yn
-        case $yn in
-            [Yy]* ) 
-                log "Testing SSH connection to GitHub..."
-                if ssh -o StrictHostKeyChecking=no -T git@github.com 2>&1 | grep -q "successfully authenticated"; then
-                    log "SSH connection to GitHub successful!"
-                    break
-                else
-                    warn "SSH connection test failed. Please check your key setup."
-                fi
-                ;;
-            [Nn]* ) 
-                warn "Please add your SSH public key to GitHub and try again."
-                exit 1
-                ;;
-            * ) 
-                echo "Please answer yes (y) or no (n)."
-                ;;
-        esac
+    for ((i=0; i<rows; i++)); do
+        for ((j=0; j<columns; j++)); do
+            local idx=$(( i + j * rows ))
+            (( idx < total )) && printf "%-$(echo $col_width)s" "$((idx + 1)). ${fonts[idx]}"
+        done
+        echo
     done
 }
 
-# Function to install development and utility packages
-install_development_packages() {
-    log "Installing development and utility packages..."
-    
-    apt install -y \
-        bash-completion \
-        bat \
-        python \
-        python-pip \
-        sudo \
-        mesa \
-        mesa-dev \
-        vulkan-headers \
-        ocl-icd \
-        opencl-headers \
-        freetype \
-        libandroid-wordexp \
-        chafa \
-        imagemagick \
-        fastfetch \
-        eza \
-        multitail \
-        tree \
-        zoxide \
-        fontconfig-utils \
-        tmux \
-        ripgrep \
-        make \
-        unzip \
-        neovim \
-        elfutils \
-        termux-elf-cleaner \
-        starship \
-        jq \
-        fd \
-        htop \
-        ncdu
-    
-    # Install Python packages
-    log "Installing Python packages..."
-    pip install trash-cli requests beautifulsoup4
+# --- Phase 1: System Bootstrap ---
+phase1_bootstrap() {
+    log "Phase 1: Updating system and installing essential tools..."
+    touch ~/.hushlogin
+    mkdir -p ~/.termux ~/.local/share/fonts ~/tmp ~/.config ~/.ssh ~/dev
+    pkg update && pkg upgrade -y
+    pkg install -y git curl wget openssh termux-api termux-tools build-essential binutils unzip fontconfig
 }
 
-# Function to install and setup tools
-setup_development_tools() {
-    log "Setting up development tools..."
-    
-    # Install fzf
+# --- Phase 2: Identity Setup ---
+phase2_git_ssh() {
+    log "Phase 2: Setting up Git and SSH identity..."
+    if [[ ! -f ~/.ssh/id_ed25519 ]]; then
+        read -rp "Enter your GitHub username: " username
+        read -rp "Enter your GitHub email: " email
+        git config --global user.name "$username"
+        git config --global user.email "$email"
+        git config --global init.defaultBranch main
+        ssh-keygen -t ed25519 -C "$email" -f ~/.ssh/id_ed25519 -N ""
+        eval "$(ssh-agent -s)"
+        ssh-add ~/.ssh/id_ed25519
+        cat ~/.ssh/id_ed25519.pub | termux-clipboard-set
+        log "SSH Public Key copied to clipboard."
+        echo -e "${BLUE}============================================${NC}"
+        echo "ACTION REQUIRED: Add key to GitHub"
+        echo "URL: https://github.com/settings/keys"
+        echo -e "${BLUE}============================================${NC}"
+        read -rp "Press Enter once the key is added to GitHub..."
+    else
+        log "SSH identity already exists. Skipping generation."
+    fi
+}
+
+# --- Phase 3: Repository Cloning ---
+phase3_clone_repo() {
+    log "Phase 3: Cloning fun007 configuration repository..."
+    if [[ ! -d "$LOCAL_REPO" ]]; then
+        git clone "$REPO_URL" "$LOCAL_REPO" || error "Failed to clone repository. Check SSH/Network."
+    else
+        log "Repository already exists at $LOCAL_REPO. Pulling updates..."
+        cd "$LOCAL_REPO" && git pull && cd -
+    fi
+}
+
+# --- Phase 4: Package & Tool Installation ---
+phase4_install_tools() {
+    log "Phase 4: Installing development packages and tools..."
+    pkg install -y \
+        root-repo x11-repo tur-repo \
+        bash-completion bat eza fastfetch starship \
+        neovim tmux jq fd ripgrep zoxide tree \
+        python python-pip htop ncdu cmake make \
+        freetype fontconfig-utils
+
+    pip install trash-cli requests beautifulsoup4
+
     if [[ ! -d ~/.fzf ]]; then
         log "Installing fzf..."
         git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-        sed -i '1s|.*|#!/data/data/com.termux/files/usr/bin/env bash|' ~/.fzf/install
-        ~/.fzf/install --all
+        ~/.fzf/install --all --no-bash --no-zsh --no-fish
     fi
     
-    # Create Github directory and clone repositories
-    mkdir -p ~/dev && cd ~/dev
-    
-    # Clone fun007 repository
-    if [[ ! -d ~/dev/fun007 ]]; then
-        log "Cloning fun007 repository..."
-        git clone git@github.com:fam007e/fun007.git
-    fi
-    
-    # Clone termux-adb-fastboot repository
     if [[ ! -d ~/dev/termux-adb-fastboot ]]; then
-        log "Cloning termux-adb-fastboot repository..."
-        git clone git@github.com:offici5l/termux-adb-fastboot.git
-    fi
-    
-    # Install termux-adb-fastboot
-    if [[ -d ~/dev/termux-adb-fastboot ]]; then
         log "Installing termux-adb-fastboot..."
-        cd ~/dev/termux-adb-fastboot
-        chmod +x install
-        ./install
-        cd
+        git clone https://github.com/offici5l/termux-adb-fastboot.git ~/dev/termux-adb-fastboot
+        bash ~/dev/termux-adb-fastboot/install
     fi
 }
 
-# Function to setup configuration files
-setup_configurations() {
-    log "Setting up configuration files..."
+# --- Phase 5: Configuration Deployment ---
+phase5_deploy_configs() {
+    log "Phase 5: Deploying configuration files from fun007..."
+    DOT_DIR="$LOCAL_REPO/system-admin/dotfiles"
     
-    # Copy bashrc configuration - USING TERMUX-SPECIFIC VERSION
-    if [[ -f ~/dev/fun007/configs/termux/bashrc_SAFE_TMX ]]; then
-        cp ~/dev/fun007/configs/termux/bashrc_SAFE_TMX ~/.bashrc
-        log "Termux-specific bashrc configuration copied."
-    elif [[ -f ~/dev/fun007/configs/bash/bashrc_SAFE ]]; then
-        cp ~/dev/fun007/configs/bash/bashrc_SAFE ~/.bashrc
-        log "General bashrc configuration copied."
-    fi
+    [[ -f "$DOT_DIR/termux/bashrc_SAFE_TMX" ]] && cp "$DOT_DIR/termux/bashrc_SAFE_TMX" ~/.bashrc
+    [[ -f "$DOT_DIR/starship.toml" ]] && cp "$DOT_DIR/starship.toml" ~/.config/
     
-    # Copy starship configuration
-    if [[ -f ~/dev/fun007/configs/starship.toml ]]; then
-        mkdir -p ~/.config
-        cp ~/dev/fun007/configs/starship.toml ~/.config/
-        log "Starship configuration copied."
-    fi
-    
-    # Setup nano configuration
-    if [[ -f ~/dev/fun007/configs/nanorc_SAFE ]]; then
-        sed 's|/usr/share/nano/|/data/data/com.termux/files/usr/share/nano/|g' \
-            ~/dev/fun007/configs/nanorc_SAFE > ~/.nanorc
-        log "Nano configuration setup completed."
-    fi
-    
-    # Setup fastfetch configuration
     mkdir -p ~/.config/fastfetch
-    if [[ -f ~/dev/fun007/configs/fastfetch/ff_SAFE_config.jsonc ]]; then
-        cp ~/dev/fun007/configs/fastfetch/ff_SAFE_config.jsonc ~/.config/fastfetch/config.jsonc
-        cp ~/dev/fun007/configs/fastfetch/ascii.txt ~/.config/fastfetch/ascii.txt
-        log "Fastfetch configuration copied."
+    if [[ -f "$DOT_DIR/fastfetch/ff_SAFE_config.jsonc" ]]; then
+        cp "$DOT_DIR/fastfetch/ff_SAFE_config.jsonc" ~/.config/fastfetch/config.jsonc
+        cp "$DOT_DIR/fastfetch/ascii.txt" ~/.config/fastfetch/ascii.txt
     fi
     
-    # Setup Termux colors (if available)
-    if [[ -f ~/dev/fun007/configs/termux/colors.properties_tmx ]]; then
-        mkdir -p ~/.termux
-        cp ~/dev/fun007/configs/termux/colors.properties_tmx ~/.termux/colors.properties
-        log "Termux-specific colors configuration copied."
-    fi
+    [[ -f "$DOT_DIR/nanorc_SAFE" ]] && sed 's|/usr/share/nano/|/data/data/com.termux/files/usr/share/nano/|g' "$DOT_DIR/nanorc_SAFE" > ~/.nanorc
     
-    # Setup Neovim configuration
     if [[ ! -d ~/.config/nvim ]]; then
-        log "Setting up Neovim configuration..."
         git clone https://github.com/nvim-lua/kickstart.nvim.git ~/.config/nvim
     fi
 }
 
-# Function to install selected fonts
-install_fonts() {
-    log "Setting up font installation..."
+# --- Phase 6: Nerd Font Management ---
+phase6_fonts() {
+    log "Phase 6: Advanced Nerd Font management..."
     
-    fonts=(
-        "0xProto"
-        "3270" 
-        "Agave"
-        "AnonymicePro"
-        "Arimo"
-        "BlexMono"
-        "CascadiaCode"
-        "CascadiaMono"
-        "CodeNewRoman"
-        "ComicShannsMono"
-        "CommitMono"
-        "Cousine"
-        "D2Coding"
-        "DaddyTimeMono"
-        "DejaVuSansMono"
-        "EnvyCodeR"
-        "FantasqueSansMono"
-        "FiraCode"
-        "FiraMono"
-        "GeistMono"
-        "Go-Mono"
-        "Gohu"
-        "Hack"
-        "Hasklig"
-        "Hermit"
-        "iA-Writer"
-        "Inconsolata"
-        "InconsolataGo"
-        "InconsolataLGC"
-        "IntoneMono"
-        "Iosevka"
-        "IosevkaTerm"
-        "IosevkaTermSlab"
-        "JetBrainsMono"
-        "Lekton"
-        "LiberationMono"
-        "Lilex"
-        "MartianMono"
-        "Meslo"
-        "Monaspice"
-        "Monofur"
-        "Monoid"
-        "Mononoki"
-        "Noto"
-        "OpenDyslexic"
-        "Overpass"
-        "ProFont"
-        "ProggyClean"
-        "RobotoMono"
-        "SourceCodePro"
-        "SpaceMono"
-        "Terminus"
-        "Tinos"
-        "Ubuntu"
-        "UbuntuMono"
-        "VictorMono"
-    )
+    log "Fetching available fonts from GitHub..."
+    local api_response
+    api_response=$(curl -s --connect-timeout 10 --max-time 30 \
+        "https://api.github.com/repos/ryanoasis/nerd-fonts/contents/patched-fonts?ref=master")
 
-    echo ""
-    echo -e "${BLUE}==========================================${NC}"
-    echo "Font Installation"
-    echo -e "${BLUE}==========================================${NC}"
-    echo "Select fonts to install (separate with spaces):"
-    echo "Example: 0 15 33 (for 0xProto, FantasqueSansMono, JetBrainsMono)"
-    echo "------------------------------------------"
-    for i in "${!fonts[@]}"; do
-        printf "%2d - %s\n" "$i" "${fonts[i]}"
-    done
-    echo "------------------------------------------"
-    read -rp "Enter the numbers of fonts to install: " font_selection
+    if [[ $? -ne 0 || -z "$api_response" ]]; then
+        warn "Failed to fetch font list. Fallback to JetBrainsMono."
+        selected_fonts=("JetBrainsMono")
+    else
+        fonts=($(echo "$api_response" | awk -F'"' '/name/ {print $4}' | sort))
+        printf "%b\n" "${GREEN}Found ${#fonts[@]} available fonts.${NC}"
+        
+        echo -e "${BLUE}Select fonts (e.g. 1 5), 'all', or 'list':${NC}"
+        print_fonts_in_columns "${fonts[@]}" | $PAGER
 
-    if [[ -z "$font_selection" ]]; then
-        warn "No fonts selected. Installing JetBrainsMono as default..."
-        font_selection="33"
-    fi
-
-    mkdir -p ~/.local/share/fonts
-
-    for selection in $font_selection; do
-        if [[ "$selection" -ge 0 && "$selection" -lt "${#fonts[@]}" ]]; then
-            font=${fonts[$selection]}
-            log "Downloading and installing $font Nerd Font..."
+        while true; do
+            echo -ne "${YELLOW}Selection: ${NC}"
+            read -r font_selection < /dev/tty
+            [[ "$font_selection" == "all" ]] && { selected_fonts=("${fonts[@]}"); break; }
+            [[ "$font_selection" == "list" ]] && { print_fonts_in_columns "${fonts[@]}" | $PAGER; continue; }
             
-            wget -q --show-progress \
-                "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${font}.tar.xz" \
-                -P ~/tmp
-                
-            if [[ -f ~/tmp/"${font}".tar.xz ]]; then
-                tar -xf ~/tmp/"${font}".tar.xz -C ~/.local/share/fonts/
-                rm ~/tmp/"${font}".tar.xz
-                log "$font installed successfully."
-            else
-                error "Failed to download $font"
-            fi
-        else
-            warn "Invalid selection: $selection"
-        fi
-    done
-
-    log "Refreshing font cache..."
-    fc-cache -fv
-}
-
-# Function to select a font for use in Termux
-select_font_for_termux() {
-    log "Setting up Termux font selection..."
-    
-    local font_dir="$HOME/.local/share/fonts"
-    if [[ ! -d "$font_dir" || -z "$(ls -A "$font_dir" 2>/dev/null)" ]]; then
-        warn "No fonts found in $font_dir"
-        return 1
-    fi
-    
-    local fonts=("$font_dir"/*.ttf)
-    
-    if [[ ${#fonts[@]} -eq 0 ]]; then
-        warn "No TTF fonts found."
-        return 1
-    fi
-
-    echo ""
-    echo "Available fonts:"
-    echo "----------------"
-    for i in "${!fonts[@]}"; do
-        echo "$((i + 1)). $(basename "${fonts[$i]}" .ttf)"
-    done
-    echo "----------------"
-
-    local choice
-    read -rp "Enter the number of the font for Termux (or press Enter for first font): " choice
-    
-    if [[ -z "$choice" ]]; then
-        choice=1
-    fi
-
-    local selected_font="${fonts[$((choice - 1))]}"
-
-    if [[ -z "$selected_font" || ! -f "$selected_font" ]]; then
-        error "Invalid selection. Using first available font."
-        selected_font="${fonts[0]}"
-    fi
-
-    log "Selected font: $(basename "$selected_font")"
-    cp "$selected_font" ~/.termux/font.ttf
-}
-
-# Function to list and select a theme
-select_theme_for_termux() {
-    log "Setting up Termux theme selection..."
-    
-    local theme_dir="$HOME/dev/fun007/Termux_postinstallconfig_script/colors"
-    
-    if [[ ! -d "$theme_dir" ]]; then
-        error "Theme directory not found: $theme_dir"
-        return 1
-    fi
-    
-    local themes=("$theme_dir"/*.properties)
-
-    if [[ ${#themes[@]} -eq 0 ]]; then
-        error "No theme files found."
-        return 1
-    fi
-
-    echo ""
-    echo "Available themes:"
-    echo "-----------------"
-    for i in "${!themes[@]}"; do
-        echo "$((i + 1)). $(basename "${themes[$i]}" .properties)"
-    done
-    echo "-----------------"
-
-    local choice
-    read -rp "Enter theme number (or press Enter for 'nord'): " choice
-    
-    # Default to nord theme if available
-    if [[ -z "$choice" ]]; then
-        for i in "${!themes[@]}"; do
-            if [[ "$(basename "${themes[$i]}")" == "nord.properties" ]]; then
-                choice=$((i + 1))
-                break
+            if [[ -n "$font_selection" ]]; then
+                valid=true; selected_fonts=()
+                for sel in $font_selection; do
+                    if [[ "$sel" =~ ^[0-9]+$ ]] && (( sel > 0 && sel <= ${#fonts[@]} )); then
+                        selected_fonts+=("${fonts[sel-1]}")
+                    else
+                        warn "Invalid index: $sel"; valid=false; break
+                    fi
+                done
+                [[ "$valid" == true ]] && break
             fi
         done
-        # If nord not found, use first theme
-        if [[ -z "$choice" ]]; then
-            choice=1
+    fi
+
+    for font in "${selected_fonts[@]}"; do
+        log "Downloading $font..."
+        font_id=$(echo "$font" | awk '{print $1}')
+        if curl -s --head --fail "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${font_id}.zip" >/dev/null 2>&1; then
+            curl -sSLo "$HOME/tmp/${font_id}.zip" "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/${font_id}.zip"
+            unzip -oq "$HOME/tmp/${font_id}.zip" -d ~/.local/share/fonts/
+            rm "$HOME/tmp/${font_id}.zip"
+        else
+            warn "Font $font not found in latest release. Skipping."
         fi
-    fi
-
-    local selected_theme="${themes[$((choice - 1))]}"
-
-    if [[ -z "$selected_theme" || ! -f "$selected_theme" ]]; then
-        error "Invalid selection. Using first available theme."
-        selected_theme="${themes[0]}"
-    fi
-
-    log "Selected theme: $(basename "$selected_theme" .properties)"
-    cp "$selected_theme" ~/.termux/colors.properties
+    done
+    
+    fc-cache -f
+    
+    log "Setting primary Termux font..."
+    # Attempt to find a suitable regular ttf from the installed selection
+    find ~/.local/share/fonts -name "*NerdFont*Regular.ttf" | head -n 1 | xargs -I {} cp {} ~/.termux/font.ttf
 }
 
-# Function to finalize setup
-finalize_setup() {
-    log "Finalizing setup..."
+# --- Phase 7: Visual Customization & Finalization ---
+phase7_finalize() {
+    log "Phase 7: Finalizing visuals and themes..."
     
-    # Reload termux settings
-    termux-reload-settings 2>/dev/null || true
-    
-    # shellcheck disable=SC1090
-    source ~/.bashrc 2>/dev/null || true
-    
-    log "Setup completed successfully!"
-    echo ""
-    echo -e "${BLUE}==============================================${NC}"
-    echo "SETUP COMPLETE!"
-    echo -e "${BLUE}==============================================${NC}"
-    echo "Please restart Termux to apply all changes."
-    echo ""
-    echo -e "${BLUE}Installed tools:${NC}"
-    echo "  - Git with SSH setup"
-    echo "  - Neovim with kickstart config"
-    echo "  - Starship prompt"
-    echo "  - Fastfetch system info"
-    echo "  - FZF fuzzy finder"
-    echo "  - Various CLI utilities"
-    echo ""
-    echo -e "${BLUE}Configuration files are in:${NC}"
-    echo "  - ~/.bashrc (main shell config)"
-    echo "  - ~/.config/starship.toml (prompt config)"
-    echo "  - ~/.config/nvim/ (Neovim config)"
-    echo "  - ~/.config/fastfetch/ (system info config)"
-    echo ""
-    echo -e "${BLUE}Repositories cloned to:${NC}"
-    echo "  - ~/dev/fun007 (your dotfiles)"
-    echo -e "${BLUE}==============================================${NC}"
+    THEME_DIR="$LOCAL_REPO/system-admin/termux-setup/colors"
+    if [[ -d "$THEME_DIR" ]]; then
+        themes=("$THEME_DIR"/*.properties)
+        echo "Available themes:"
+        for i in "${!themes[@]}"; do
+            echo "$((i+1)). $(basename "${themes[$i]}" .properties)"
+        done
+        read -rp "Select theme number [default: 1]: " t_choice
+        selected_theme="${themes[$((t_choice-1))]}"
+        [[ -f "$selected_theme" ]] && cp "$selected_theme" ~/.termux/colors.properties
+    fi
+
+    termux-reload-settings
+    log "Setup Complete! Restart Termux to apply changes."
 }
 
-# Main execution
+# --- Main Execution ---
 main() {
-    log "Starting Enhanced Termux Post-Installation Setup..."
-    
-    # Install essential packages first
-    install_essential_packages
-    
-    # Setup additional repositories
-    setup_repositories
-    
-    # Setup Git and SSH
-    setup_git_config
-    copy_and_confirm_ssh_key
-    
-    # Install development packages
-    install_development_packages
-    
-    # Setup development tools
-    setup_development_tools
-    
-    # Setup configuration files
-    setup_configurations
-    
-    # Install fonts
-    install_fonts
-    
-    # Select font for Termux
-    select_font_for_termux
-    
-    # Select theme for Termux
-    select_theme_for_termux
-    
-    # Finalize setup
-    finalize_setup
+    phase1_bootstrap
+    phase2_git_ssh
+    phase3_clone_repo
+    phase4_install_tools
+    phase5_deploy_configs
+    phase6_fonts
+    phase7_finalize
 }
 
-# Run main function
 main "$@"
