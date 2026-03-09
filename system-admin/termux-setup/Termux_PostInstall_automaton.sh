@@ -105,9 +105,9 @@ phase4_install_tools() {
         bash-completion bat eza fastfetch starship \
         neovim tmux jq fd ripgrep zoxide tree \
         python python-pip htop ncdu cmake make \
-        freetype fontconfig-utils
+        freetype fontconfig-utils openjdk-25
 
-    pip install trash-cli requests beautifulsoup4
+    pip install requests beautifulsoup4 cython
 
     if [[ ! -d ~/.fzf ]]; then
         log "Installing fzf..."
