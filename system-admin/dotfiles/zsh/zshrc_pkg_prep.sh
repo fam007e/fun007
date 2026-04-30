@@ -69,6 +69,7 @@ PACMAN_PACKAGES=(
     multitail python python-pip thefuck tldr unzip tar gzip 
     net-tools ripgrep fd zsh-completions zsh-autosuggestions 
     p7zip unrar qbittorrent xdotool libnotify
+    jdk21-openjdk android-tools
 )
 
 AUR_PACKAGES=(
