@@ -70,6 +70,8 @@ PACMAN_PACKAGES=(
     net-tools ripgrep fd zsh-completions zsh-autosuggestions 
     p7zip unrar qbittorrent xdotool libnotify
     jdk21-openjdk android-tools
+    bind lsb-release mlocate openssl strace colordiff 
+    nano go rust alacritty kitty clamav
 )
 
 AUR_PACKAGES=(
