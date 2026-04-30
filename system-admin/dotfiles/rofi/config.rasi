@@ -1,7 +1,18 @@
-configuration{
-	modi:"window,run,drun,emoji,calc";
+configuration {
+    modi: "window,run,drun,emoji,calc";
+
+    /* Sorting & Matching */
+    matching:           "fuzzy";
+    sorting-method:     "fzf";
+    levenshtein-sort:   true;
+
+    /* drun specific - makes frecency work properly */
+    drun-show-actions:  false;
+    drun-match-fields:  "name,generic,exec,categories";
+
+    /* General */
+    case-sensitive:     false;
 }
 
 //@theme "/usr/share/rofi/themes/android_notification.rasi"
-
 @theme "$HOME/.config/rofi/themes/roundednord.rasi"

@@ -2,7 +2,7 @@
 # ==============================================================================
 # fun007 Arch Linux Modular Installer
 # Purpose: Automated Arch installation with LUKS/BTRFS and fun007 integration.
-# Logic: 
+# Logic:
 #   1. Pre-flight checks & Hardware detection
 #   2. Disk partitioning & Encryption (LUKS/BTRFS)
 #   3. Base system bootstrap (pacstrap)
@@ -21,7 +21,7 @@ CONFIG_FILE="$1"
 LOG_FILE="/tmp/arch_install_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
-log() { echo -e "\033[1;34m[$(date '+%H:%M:%S')]\033[0m $1"; }
+log()   { echo -e "\033[1;34m[$(date '+%H:%M:%S')]\033[0m $1"; }
 error() { echo -e "\033[1;31m[ERROR]\033[0m $1"; exit 1; }
 
 # --- Configuration Retrieval ---
@@ -36,6 +36,9 @@ DISK=$(get_config "disk")
 LUKS_PASSWORD=$(get_config "luks_password")
 KERNEL=$(get_config "kernel")
 DESKTOP=$(get_config "desktop")
+# swap_size in GiB; fallback to 8 if not set in config (backwards compat)
+SWAP_SIZE_GiB=$(get_config "swap_size")
+[[ -z "$SWAP_SIZE_GiB" || "$SWAP_SIZE_GiB" == "null" ]] && SWAP_SIZE_GiB=8
 
 [[ -z "$USERNAME" || "$USERNAME" == "null" ]] && error "Invalid config: 'username' is required."
 
@@ -75,38 +78,67 @@ else
     TARGET_ROOT="$PART_ROOT"
 fi
 
-log "Creating BTRFS subvolumes for Timeshift compatibility..."
+log "Creating BTRFS filesystem and subvolumes..."
 mkfs.vfat -F32 -n "EFIBOOT" "$PART_EFI"
 mkfs.btrfs -L "ROOT" "$TARGET_ROOT" -f
 
+# Create all subvolumes on the bare volume first
 mount "$TARGET_ROOT" /mnt
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@var
 btrfs subvolume create /mnt/@tmp
 btrfs subvolume create /mnt/@.snapshots
+# Dedicated swap subvolume — isolated so Timeshift never touches it
+btrfs subvolume create /mnt/@swap
 umount /mnt
 
-# Mount with optimization
+# Mount subvolumes with SSD/compression optimizations
 MOUNT_OPTS="noatime,compress=zstd:1,space_cache=v2"
 mount -o "$MOUNT_OPTS,subvol=@" "$TARGET_ROOT" /mnt
-mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots}
-mount -o "$MOUNT_OPTS,subvol=@home" "$TARGET_ROOT" /mnt/home
-mount -o "$MOUNT_OPTS,subvol=@var" "$TARGET_ROOT" /mnt/var
-mount -o "$MOUNT_OPTS,subvol=@tmp" "$TARGET_ROOT" /mnt/tmp
-mount -o "$MOUNT_OPTS,subvol=@.snapshots" "$TARGET_ROOT" /mnt/.snapshots
+mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots,swap}
+mount -o "$MOUNT_OPTS,subvol=@home"        "$TARGET_ROOT" /mnt/home
+mount -o "$MOUNT_OPTS,subvol=@var"         "$TARGET_ROOT" /mnt/var
+mount -o "$MOUNT_OPTS,subvol=@tmp"         "$TARGET_ROOT" /mnt/tmp
+mount -o "$MOUNT_OPTS,subvol=@.snapshots"  "$TARGET_ROOT" /mnt/.snapshots
 mount "$PART_EFI" /mnt/boot/efi
+
+# @swap gets its own mount — NO compress, NO COW.
+# compress on a swapfile subvolume is silently ignored by the kernel but
+# chattr +C must be set BEFORE the file is created; mounting without
+# compress keeps the intent clear and avoids future surprises.
+mount -o "noatime,space_cache=v2,subvol=@swap" "$TARGET_ROOT" /mnt/swap
+
+log "Configuring @swap subvolume: disabling COW (required for BTRFS swapfile)..."
+# chattr +C disables copy-on-write on the directory; inherited by new files.
+# This is what prevents "Text file busy" errors in Timeshift.
+chattr +C /mnt/swap
+
+log "Creating ${SWAP_SIZE_GiB}GiB swapfile using dd (fallocate is unsafe on BTRFS)..."
+# fallocate creates sparse/non-contiguous extents on BTRFS which the kernel
+# rejects at swapon time. dd forces actual zero-filled contiguous allocation.
+dd if=/dev/zero of=/mnt/swap/swapfile bs=1M count=$((SWAP_SIZE_GiB * 1024)) status=progress
+chmod 600 /mnt/swap/swapfile
+mkswap /mnt/swap/swapfile
+log "Swapfile created: $(ls -lh /mnt/swap/swapfile | awk '{print $5}')"
 
 # --- Phase 3: Base Installation ---
 log "Phase 3: Bootstrapping base system..."
 BASE_PKGS=(base base-devel linux-firmware $KERNEL ${KERNEL}-headers git neovim networkmanager sudo btrfs-progs jq)
 pacstrap -K /mnt "${BASE_PKGS[@]}"
+
+# genfstab captures all currently mounted filesystems by UUID — including
+# the @swap subvolume mount at /swap. The swapfile line is appended manually
+# because genfstab only detects active swap (we intentionally skip swapon
+# during install to keep the live environment clean).
+log "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
+echo "# Swapfile on no-COW @swap subvolume" >> /mnt/etc/fstab
+echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
 
 # --- Phase 4: The Chroot Setup ---
 log "Phase 4: Entering Chroot for system configuration..."
 
-# Generate the chroot script
 cat > /mnt/chroot_setup.sh <<EOF
 #!/bin/bash
 set -e
@@ -148,12 +180,15 @@ fi
 log "Cloning fun007 and bootstrapping ecosystem..."
 sudo -u "$USERNAME" mkdir -p "/home/$USERNAME/dev"
 sudo -u "$USERNAME" git clone https://github.com/fam007e/fun007.git "/home/$USERNAME/dev/fun007"
-# Run the optimized prep script from fun007
 bash "/home/$USERNAME/dev/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
 
 # 6. Timeshift Setup
+# cronie drives scheduled snapshots; timeshift-autosnap triggers on pacman.
 pacman -S --noconfirm timeshift cronie
 systemctl enable cronie
+# Verify the chattr +C flag survived into the installed system
+log "Verifying swapfile COW status (expect 'C' flag):"
+lsattr /swap/swapfile | awk '{print "  lsattr: " $0}'
 
 log "Chroot configuration complete."
 EOF

@@ -42,6 +42,21 @@ echo "2) linux-lts (Long Term Support)"
 read -rp "Choice [1-2]: " k_choice
 [[ "$k_choice" == "2" ]] && kernel="linux-lts" || kernel="linux"
 
+# 5. Swap Size
+# Rule of thumb: RAM <= 8G → match RAM; RAM > 8G → 8G is enough unless hibernation needed
+TOTAL_RAM_GiB=$(awk '/MemTotal/ {printf "%d", $2/1024/1024 + 0.5}' /proc/meminfo)
+echo ""
+echo "Detected RAM: ${TOTAL_RAM_GiB}GiB"
+echo "Enter swap size in GiB (press Enter to use ${TOTAL_RAM_GiB}G default):"
+read -rp "Swap size [${TOTAL_RAM_GiB}]: " swap_input
+swap_size="${swap_input:-$TOTAL_RAM_GiB}"
+
+# Validate numeric
+if ! [[ "$swap_size" =~ ^[0-9]+$ ]] || [[ "$swap_size" -lt 1 ]]; then
+    echo "Invalid swap size, using default: ${TOTAL_RAM_GiB}G"
+    swap_size="$TOTAL_RAM_GiB"
+fi
+
 # Generate JSON
 jq -n \
   --arg un "$username" \
@@ -52,7 +67,8 @@ jq -n \
   --arg fs "$filesystem" \
   --arg lp "$luks_password" \
   --arg kn "$kernel" \
-  '{username: $un, password: $pw, hostname: $hn, timezone: $tz, disk: $dk, filesystem: $fs, luks_password: $lp, kernel: $kn}' \
+  --argjson ss "$swap_size" \
+  '{username: $un, password: $pw, hostname: $hn, timezone: $tz, disk: $dk, filesystem: $fs, luks_password: $lp, kernel: $kn, swap_size: $ss}' \
   > config.json
 
 log "Success! config.json generated. Now run: sudo ./archinstall_interactive.sh config.json"

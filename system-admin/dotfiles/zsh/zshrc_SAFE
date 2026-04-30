@@ -1360,7 +1360,7 @@ EOF
 
 # Enhanced TorrentBD function with multiple download support
 torrentbd_news() {
-  local rss_url="<INSERT YOUR TORRENTBD RSS URL HERE>"
+  local rss_url="<INSERT RSS FEED URL HERE>"
   local temp_file=$(mktemp)
   local details_dir=$(mktemp -d)
   local download_dir="$HOME/Videos"
@@ -1543,9 +1543,11 @@ alias tbd="torrentbd_news"
 
 
 # --- Path Configuration ---
-export JAVA_HOME=/usr/lib/jvm/java-17-openjdk
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 export ANDROID_HOME=$HOME/Android/Sdk
 export ANDROID_SDK_ROOT=$HOME/Android/Sdk
+export ANDROID_BUILD_TOOLS=$(ls -d $ANDROID_HOME/build-tools/*/ | sort -V | tail -n 1)
+export JAVA_TOOL_OPTIONS="--enable-native-access=ALL-UNNAMED"
 export GOBIN=$(go env GOPATH)/bin
 
 # Add user-specific bins to path array (ensures precedence and uniqueness)
@@ -1555,6 +1557,8 @@ path=(
   "$GOBIN"
   "$ANDROID_HOME/emulator"
   "$ANDROID_HOME/platform-tools"
+  "$ANDROID_BUILD_TOOLS"
+  "/opt/android-sdk/cmdline-tools/latest/bin"
   "$path[@]"
 )
 
@@ -1564,9 +1568,13 @@ path=(
 export PATH
 # --------------------------
 
+export EDITOR=nvim
+export VISUAL=nvim
 
 if [ -f /usr/bin/fastfetch ]; then
     fastfetch
 fi
 eval "$(oh-my-posh init zsh --config $HOME/Github/fun007/system-admin/dotfiles/illusi0n_mod.omp.json)"
 [ -f /opt/miniconda3/etc/profile.d/conda.sh ] && source /opt/miniconda3/etc/profile.d/conda.sh
+
+. "$HOME/.local/bin/env"
