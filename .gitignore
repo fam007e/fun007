@@ -44,6 +44,10 @@ Text2PDF/txt2pdf
 .env.local
 *.log
 
+# Documentation Site
+sysadmin-docs/node_modules/
+sysadmin-docs/dist/
+
 # Temporary files
 *.tmp
 *.bak
