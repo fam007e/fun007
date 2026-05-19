@@ -199,8 +199,14 @@ grub-mkconfig -o /boot/grub/grub.cfg
 log "Installing GPU drivers for $GPU_TYPE..."
 if echo "$GPU_TYPE" | grep -iq "nvidia"; then
     pacman -S --noconfirm nvidia-dkms nvidia-utils || log "Failed to install nvidia-dkms, skipping..."
-elif echo "$GPU_TYPE" | grep -iq "amd"; then
-    pacman -S --noconfirm xf86-video-amdgpu || log "Failed to install xf86-video-amdgpu, skipping..."
+fi
+
+if echo "$GPU_TYPE" | grep -iq "amd"; then
+    pacman -S --noconfirm xf86-video-amdgpu mesa vulkan-radeon || log "Failed to install AMD drivers, skipping..."
+fi
+
+if echo "$GPU_TYPE" | grep -iq "intel"; then
+    pacman -S --noconfirm mesa vulkan-intel intel-media-driver || log "Failed to install Intel drivers, skipping..."
 fi
 
 # 5. fun007 Ecosystem Bootstrap
