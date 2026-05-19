@@ -15,6 +15,9 @@
 set -e
 
 # --- Helper Functions ---
+SUDO=""
+[ "$EUID" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+
 command_exists() {
     command -v "$1" &> /dev/null
 }
@@ -34,7 +37,7 @@ error() {
 
 # --- Phase 1: Bootstrapping Essentials ---
 info "Phase 1: Bootstrapping essentials..."
-sudo pacman -S --noconfirm --needed git base-devel
+$SUDO pacman -S --noconfirm --needed git base-devel
 
 # --- Phase 2: AUR Helper Setup ---
 info "Phase 2: Setting up AUR helper..."
@@ -81,7 +84,7 @@ AUR_PACKAGES=(
     oh-my-posh rate-mirrors khal
 )
 
-sudo pacman -S --noconfirm --needed "${PACMAN_PACKAGES[@]}"
+$SUDO pacman -S --noconfirm --needed "${PACMAN_PACKAGES[@]}"
 "$AUR_HELPER" -S --noconfirm --needed "${AUR_PACKAGES[@]}"
 
 # --- Phase 4: Version & Plugin Managers ---
@@ -109,7 +112,7 @@ if [ ! -d "$FASTFETCH_DIR" ]; then
         cd "$FASTFETCH_DIR/build"
         cmake .. -GNinja
         ninja package
-        sudo ninja install
+        $SUDO ninja install
     )
 else
     info "Fastfetch source already exists at $FASTFETCH_DIR. Skipping build."
@@ -134,7 +137,7 @@ ln -sf "$ZSH_DOT_DIR/zshrc_aliases.md" "$HOME/zshrc_aliases.md"
 info "Phase 7: Finalizing..."
 if [[ "$SHELL" != "$(which zsh)" ]]; then
     info "Changing default shell to Zsh..."
-    sudo chsh -s "$(which zsh)" "$USER"
+    $SUDO chsh -s "$(which zsh)" "$USER"
 fi
 
 info "Success! Restart your terminal or run 'source ~/.zshrc' to begin."

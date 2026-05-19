@@ -8,8 +8,11 @@ set -e
 
 log() { echo -e "\033[1;34m[CONFIG]\033[0m $1"; }
 
-# Pre-requisite: jq
-command -v jq >/dev/null 2>&1 || sudo pacman -Sy --noconfirm jq
+# Pre-requisite: Python (Pre-installed on ArchISO)
+if ! command -v python >/dev/null 2>&1; then
+    log "Error: Python is required for JSON generation. This should be pre-installed on ArchISO."
+    exit 1
+fi
 
 echo "--------------------------------------------------"
 echo "    Arch Linux Installation Config Wizard         "
@@ -57,18 +60,22 @@ if ! [[ "$swap_size" =~ ^[0-9]+$ ]] || [[ "$swap_size" -lt 1 ]]; then
     swap_size="$TOTAL_RAM_GiB"
 fi
 
-# Generate JSON
-jq -n \
-  --arg un "$username" \
-  --arg pw "$password" \
-  --arg hn "$hostname" \
-  --arg tz "$timezone" \
-  --arg dk "$disk" \
-  --arg fs "$filesystem" \
-  --arg lp "$luks_password" \
-  --arg kn "$kernel" \
-  --argjson ss "$swap_size" \
-  '{username: $un, password: $pw, hostname: $hn, timezone: $tz, disk: $dk, filesystem: $fs, luks_password: $lp, kernel: $kn, swap_size: $ss}' \
-  > config.json
+# Generate JSON using Python
+python -c "
+import json, sys
+data = {
+    'username': sys.argv[1],
+    'password': sys.argv[2],
+    'hostname': sys.argv[3],
+    'timezone': sys.argv[4],
+    'disk': sys.argv[5],
+    'filesystem': sys.argv[6],
+    'luks_password': sys.argv[7],
+    'kernel': sys.argv[8],
+    'swap_size': int(sys.argv[9])
+}
+with open('config.json', 'w') as f:
+    json.dump(data, f, indent=4)
+" "$username" "$password" "$hostname" "$timezone" "$disk" "$filesystem" "$luks_password" "$kernel" "$swap_size"
 
 log "Success! config.json generated. Now run: sudo ./archinstall_interactive.sh config.json"

@@ -25,7 +25,9 @@ log()   { echo -e "\033[1;34m[$(date '+%H:%M:%S')]\033[0m $1"; }
 error() { echo -e "\033[1;31m[ERROR]\033[0m $1"; exit 1; }
 
 # --- Configuration Retrieval ---
-get_config() { jq -r ".$1" "$CONFIG_FILE"; }
+get_config() {
+    python -c "import json, sys; print(json.load(open('$CONFIG_FILE')).get('$1', ''))"
+}
 
 USERNAME=$(get_config "username")
 PASSWORD=$(get_config "password")
@@ -50,7 +52,7 @@ GPU_TYPE=$(lspci | grep -E "VGA|3D|Display" || true)
 log "Detected GPU: $GPU_TYPE"
 
 # Mirror Optimization (Reflector)
-pacman -Sy --noconfirm archlinux-keyring reflector jq
+pacman -Sy --noconfirm archlinux-keyring reflector
 reflector --latest 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
 
 # --- Phase 2: Disk Partitioning & Formatting ---

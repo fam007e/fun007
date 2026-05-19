@@ -6,6 +6,9 @@
 
 set -euo pipefail
 
+SUDO=""
+[ "$EUID" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+
 echo "========================================================"
 echo "    Arch Linux Mirror Automatic Setup Script"
 echo "    This will turn your server into a public mirror"
@@ -13,11 +16,11 @@ echo "========================================================"
 
 # 1. Update system fully
 echo "Updating system..."
-pacman -Syu --noconfirm
+$SUDO pacman -Syu --noconfirm
 
 # 2. Install required packages
 echo "Installing required packages..."
-pacman -S --noconfirm --needed \
+$SUDO pacman -S --noconfirm --needed \
     nginx-mainline rsync curl wget \
     cronie btrfs-progs smartmontools \
     vnstat iftop iotop htop
