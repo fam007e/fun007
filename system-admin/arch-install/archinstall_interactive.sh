@@ -5,29 +5,33 @@
 # Logic:
 #   1. Pre-flight checks & Hardware detection
 #   2. Disk partitioning & Encryption (LUKS/BTRFS)
+#   2b. Optional secondary media drive (Videos/Downloads/Music/Pictures)
 #   3. Base system bootstrap (pacstrap)
 #   4. Chroot phase (Configuration & fun007 Bootstrap)
 # ==============================================================================
 
 set -euo pipefail
 
-# --- Initial Setup & Logging ---
+# --- Arg check ---
 if [[ "$#" -ne 1 ]]; then
     echo "Usage: $0 <config.json>"
     exit 1
 fi
 
 CONFIG_FILE="$1"
+
+# Log file is root-only — it will echo config values during install.
 LOG_FILE="/tmp/arch_install_$(date +%Y%m%d_%H%M%S).log"
+touch "$LOG_FILE" && chmod 600 "$LOG_FILE"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log()   { echo -e "\033[1;34m[$(date '+%H:%M:%S')]\033[0m $1"; }
 warn()  { echo -e "\033[1;33m[$(date '+%H:%M:%S')] [WARN]\033[0m $1"; }
 error() { echo -e "\033[1;31m[ERROR]\033[0m $1"; exit 1; }
 
-# --- Configuration Retrieval ---
+# --- Config helpers ---
 get_config() {
-    python -c "import json, sys; print(json.load(open('$CONFIG_FILE')).get('$1', ''))"
+    python -c "import json,sys; v=json.load(open('$CONFIG_FILE')).get('$1',''); print(v if v is not None else '')"
 }
 
 USERNAME=$(get_config "username")
@@ -38,63 +42,57 @@ FS=$(get_config "filesystem")
 DISK=$(get_config "disk")
 LUKS_PASSWORD=$(get_config "luks_password")
 KERNEL=$(get_config "kernel")
-DESKTOP=$(get_config "desktop")
-# swap_size in GiB; fallback to 8 if not set in config (backwards compat)
+MEDIA_DRIVE=$(get_config "media_drive")
+
 SWAP_SIZE_GiB=$(get_config "swap_size")
 [[ -z "$SWAP_SIZE_GiB" || "$SWAP_SIZE_GiB" == "null" ]] && SWAP_SIZE_GiB=8
 
 [[ -z "$USERNAME" || "$USERNAME" == "null" ]] && error "Invalid config: 'username' is required."
+[[ -z "$DISK"     || "$DISK"     == "null" ]] && error "Invalid config: 'disk' is required."
 
-# --- Phase 1: Hardware & Mirror Setup ---
+# =============================================================================
+# Phase 1: Hardware & Mirror Setup
+# =============================================================================
 log "Phase 1: Hardware detection and mirror optimization..."
 
-# GPU Detection
 GPU_TYPE=$(lspci | grep -E "VGA|3D|Display" || true)
 log "Detected GPU: $GPU_TYPE"
 
-# Keyring & Mirror Optimization
-# On older ISOs, we might need to initialize the keyring first
 log "Updating Arch Linux Keyring..."
 pacman -Sy --noconfirm archlinux-keyring || {
-    warn "Keyring update failed. Attempting to re-initialize pacman-key..."
+    warn "Keyring update failed. Re-initializing pacman-key..."
     pacman-key --init
     pacman-key --populate archlinux
     pacman -Sy --noconfirm archlinux-keyring
 }
 
 log "Optimizing mirrors..."
-# Reflector is notoriously buggy in some ArchISO versions due to Python module paths.
-# We attempt it, but if it fails, we provide a reliable fallback.
 if command -v reflector >/dev/null 2>&1; then
-    log "Attempting mirror optimization with Reflector..."
     if ! reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist 2>/dev/null; then
-        warn "Reflector failed (likely a module path issue in ArchISO). Falling back to basic mirror update."
-        # Basic fallback: keep only the top 5 mirrors from the existing list to speed up pacstrap
-        head -n 10 /etc/pacman.d/mirrorlist > /tmp/mirrorlist.tmp && mv /tmp/mirrorlist.tmp /etc/pacman.d/mirrorlist
+        warn "Reflector failed. Falling back to trimmed default mirrorlist."
+        head -n 10 /etc/pacman.d/mirrorlist > /tmp/mirrorlist.tmp \
+            && mv /tmp/mirrorlist.tmp /etc/pacman.d/mirrorlist
     fi
 else
     warn "Reflector not found. Using default mirrorlist."
 fi
 
-# Final check: ensure mirrorlist is not empty
-if [[ ! -s /etc/pacman.d/mirrorlist ]]; then
-    error "Mirrorlist is empty. Cannot proceed with installation."
-fi
+[[ ! -s /etc/pacman.d/mirrorlist ]] && error "Mirrorlist is empty. Cannot continue."
 
-# --- Phase 2: Disk Partitioning & Formatting ---
+# =============================================================================
+# Phase 2: Disk Partitioning & Formatting
+# =============================================================================
 log "Phase 2: Preparing storage on $DISK..."
 
-# Clear partition table
 sgdisk -Z "$DISK"
 sgdisk -a 2048 -o "$DISK"
-
-# 1. EFI System Partition (2GB)
+# 1. EFI (2 GiB)
 sgdisk -n 1::+2G --typecode=1:ef00 --change-name=1:'EFIBOOT' "$DISK"
-# 2. Root Partition (Remainder)
-sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:'ROOT' "$DISK"
+# 2. Root (remainder)
+sgdisk -n 2::-0  --typecode=2:8300 --change-name=2:'ROOT'    "$DISK"
 
-# Handle partition naming for NVMe and eMMC devices
-if [[ "$DISK" =~ "nvme" || "$DISK" =~ "mmcblk" ]]; then
+# Partition naming: NVMe and eMMC use 'p' suffix; SATA/SCSI do not.
+if [[ "$DISK" =~ nvme|mmcblk ]]; then
     PART_EFI="${DISK}p1"
     PART_ROOT="${DISK}p2"
 else
@@ -102,103 +100,158 @@ else
     PART_ROOT="${DISK}2"
 fi
 
-# Filesystem Setup (LUKS/BTRFS focus)
+# LUKS or plain BTRFS
 if [[ "$FS" == "luks" ]]; then
-    log "Setting up LUKS Encryption on $PART_ROOT..."
+    log "Setting up LUKS on $PART_ROOT..."
     echo -n "$LUKS_PASSWORD" | cryptsetup luksFormat "$PART_ROOT" -
-    echo -n "$LUKS_PASSWORD" | cryptsetup open "$PART_ROOT" cryptroot -
+    echo -n "$LUKS_PASSWORD" | cryptsetup open    "$PART_ROOT" cryptroot -
     TARGET_ROOT="/dev/mapper/cryptroot"
 else
     TARGET_ROOT="$PART_ROOT"
 fi
 
-log "Creating BTRFS filesystem and subvolumes..."
+log "Formatting and creating BTRFS subvolumes..."
 mkfs.vfat -F32 -n "EFIBOOT" "$PART_EFI"
 mkfs.btrfs -L "ROOT" "$TARGET_ROOT" -f
 
-# Create all subvolumes on the bare volume first
+# Create all subvolumes on bare volume
 mount "$TARGET_ROOT" /mnt
 btrfs subvolume create /mnt/@
 btrfs subvolume create /mnt/@home
 btrfs subvolume create /mnt/@var
 btrfs subvolume create /mnt/@tmp
 btrfs subvolume create /mnt/@.snapshots
-# Dedicated swap subvolume — isolated so Timeshift never touches it
-btrfs subvolume create /mnt/@swap
+btrfs subvolume create /mnt/@swap     # isolated from Timeshift
 umount /mnt
 
-# Mount subvolumes with SSD/compression optimizations
+# Mount with SSD/compression optimisations
 MOUNT_OPTS="noatime,compress=zstd:1,space_cache=v2"
-mount -o "$MOUNT_OPTS,subvol=@" "$TARGET_ROOT" /mnt
+mount -o "$MOUNT_OPTS,subvol=@"           "$TARGET_ROOT" /mnt
 mkdir -p /mnt/{boot,home,var,tmp,.snapshots,swap}
-mount -o "$MOUNT_OPTS,subvol=@home"        "$TARGET_ROOT" /mnt/home
-mount -o "$MOUNT_OPTS,subvol=@var"         "$TARGET_ROOT" /mnt/var
-mount -o "$MOUNT_OPTS,subvol=@tmp"         "$TARGET_ROOT" /mnt/tmp
-mount -o "$MOUNT_OPTS,subvol=@.snapshots"  "$TARGET_ROOT" /mnt/.snapshots
+mount -o "$MOUNT_OPTS,subvol=@home"       "$TARGET_ROOT" /mnt/home
+mount -o "$MOUNT_OPTS,subvol=@var"        "$TARGET_ROOT" /mnt/var
+mount -o "$MOUNT_OPTS,subvol=@tmp"        "$TARGET_ROOT" /mnt/tmp
+mount -o "$MOUNT_OPTS,subvol=@.snapshots" "$TARGET_ROOT" /mnt/.snapshots
 mount "$PART_EFI" /mnt/boot
 
-# @swap gets its own mount — NO compress, NO COW.
-# compress on a swapfile subvolume is silently ignored by the kernel but
-# chattr +C must be set BEFORE the file is created; mounting without
-# compress keeps the intent clear and avoids future surprises.
+# @swap: NO compress, NO COW (required for kernel swapfile on BTRFS)
 mount -o "noatime,space_cache=v2,subvol=@swap" "$TARGET_ROOT" /mnt/swap
-
-log "Configuring @swap subvolume: disabling COW (required for BTRFS swapfile)..."
-# chattr +C disables copy-on-write on the directory; inherited by new files.
-# This is what prevents "Text file busy" errors in Timeshift.
+log "Disabling COW on @swap (chattr +C)..."
 chattr +C /mnt/swap
 
-log "Creating ${SWAP_SIZE_GiB}GiB swapfile using dd (fallocate is unsafe on BTRFS)..."
-# fallocate creates sparse/non-contiguous extents on BTRFS which the kernel
-# rejects at swapon time. dd forces actual zero-filled contiguous allocation.
+log "Creating ${SWAP_SIZE_GiB}GiB swapfile (dd, not fallocate — BTRFS requirement)..."
 dd if=/dev/zero of=/mnt/swap/swapfile bs=1M count=$((SWAP_SIZE_GiB * 1024)) status=progress
 chmod 600 /mnt/swap/swapfile
 mkswap /mnt/swap/swapfile
-log "Swapfile created: $(ls -lh /mnt/swap/swapfile | awk '{print $5}')"
+log "Swapfile: $(ls -lh /mnt/swap/swapfile | awk '{print $5}')"
 
-# --- Phase 3: Base Installation ---
+# =============================================================================
+# Phase 2b: Optional Secondary Media Drive
+# =============================================================================
+if [[ -n "$MEDIA_DRIVE" && "$MEDIA_DRIVE" != "null" && -b "$MEDIA_DRIVE" ]]; then
+    log "Phase 2b: Configuring media drive: $MEDIA_DRIVE"
+
+    # Detect SSD/NVMe for discard mount option
+    MEDIA_ROTATIONAL=$(cat "/sys/block/$(basename "$MEDIA_DRIVE")/queue/rotational" 2>/dev/null || echo "1")
+    MEDIA_OPTS="noatime,compress=zstd:1,space_cache=v2"
+    [[ "$MEDIA_ROTATIONAL" == "0" ]] && MEDIA_OPTS="${MEDIA_OPTS},discard=async"
+
+    log "Formatting $MEDIA_DRIVE as BTRFS (label: MEDIA)..."
+    mkfs.btrfs -L "MEDIA" "$MEDIA_DRIVE" -f
+
+    log "Creating media subvolumes..."
+    mkdir -p /mnt/tmp_media_setup
+    mount "$MEDIA_DRIVE" /mnt/tmp_media_setup
+    btrfs subvolume create /mnt/tmp_media_setup/@Videos
+    btrfs subvolume create /mnt/tmp_media_setup/@Downloads
+    btrfs subvolume create /mnt/tmp_media_setup/@Music
+    btrfs subvolume create /mnt/tmp_media_setup/@Pictures
+    umount /mnt/tmp_media_setup
+    rmdir  /mnt/tmp_media_setup
+
+    log "Mounting media subvolumes under /home/$USERNAME/..."
+    mkdir -p /mnt/home/$USERNAME/{Videos,Downloads,Music,Pictures}
+
+    mount -o "${MEDIA_OPTS},subvol=@Videos"    "$MEDIA_DRIVE" /mnt/home/$USERNAME/Videos
+    mount -o "${MEDIA_OPTS},subvol=@Downloads" "$MEDIA_DRIVE" /mnt/home/$USERNAME/Downloads
+    mount -o "${MEDIA_OPTS},subvol=@Music"     "$MEDIA_DRIVE" /mnt/home/$USERNAME/Music
+    mount -o "${MEDIA_OPTS},subvol=@Pictures"  "$MEDIA_DRIVE" /mnt/home/$USERNAME/Pictures
+
+    # UID 1000 = first non-root user (what useradd will assign)
+    chown 1000:1000 /mnt/home/$USERNAME/{Videos,Downloads,Music,Pictures}
+    log "Media drive mounted. genfstab will capture these mounts automatically."
+else
+    if [[ -n "$MEDIA_DRIVE" && "$MEDIA_DRIVE" != "null" ]]; then
+        warn "Media drive '$MEDIA_DRIVE' specified but device not found. Skipping."
+    fi
+fi
+
+# =============================================================================
+# Phase 3: Base System Bootstrap
+# =============================================================================
 log "Phase 3: Bootstrapping base system..."
-BASE_PKGS=(base base-devel dkms linux-firmware $KERNEL ${KERNEL}-headers git neovim networkmanager sudo btrfs-progs)
+BASE_PKGS=(
+    base base-devel dkms linux-firmware
+    "$KERNEL" "${KERNEL}-headers"
+    git neovim networkmanager sudo
+    btrfs-progs
+)
 pacstrap -K /mnt "${BASE_PKGS[@]}"
 
-# genfstab captures all currently mounted filesystems by UUID — including
-# the @swap subvolume mount at /swap. The swapfile line is appended manually
-# because genfstab only detects active swap (we intentionally skip swapon
-# during install to keep the live environment clean).
 log "Generating fstab..."
 genfstab -U /mnt >> /mnt/etc/fstab
-echo "# Swapfile on no-COW @swap subvolume" >> /mnt/etc/fstab
-echo "/swap/swapfile none swap defaults 0 0" >> /mnt/etc/fstab
+# genfstab picks up all mounted filesystems by UUID, including the media drive
+# subvolumes (if configured) and the @swap subvolume.
+# Append the swapfile entry manually — genfstab only detects active swap,
+# and we intentionally do not activate swap during install.
+echo "# BTRFS swapfile (no-COW @swap subvolume)" >> /mnt/etc/fstab
+echo "/swap/swapfile none swap defaults 0 0"      >> /mnt/etc/fstab
 
-# --- Phase 4: The Chroot Setup ---
-log "Phase 4: Entering Chroot for system configuration..."
+# =============================================================================
+# Phase 4: Chroot Configuration
+# =============================================================================
+log "Phase 4: Entering chroot for system configuration..."
 
+# Credentials are passed via environment variables so they are never written
+# into the chroot script file or the install log.
 cat > /mnt/chroot_setup.sh <<EOF
 #!/bin/bash
-set -e
+set -euo pipefail
 log() { echo -e "\033[1;32m[CHROOT]\033[0m \$1"; }
 
-# Sync package databases
+# Credentials injected via environment — never stored in this file.
+_USERNAME="\${INST_USER:?INST_USER not set}"
+_PASSWORD="\${INST_PASS:?INST_PASS not set}"
+
 pacman -Sy --noconfirm
 
-# 1. System Localization
+# ── 1. Localisation ──────────────────────────────────────────────────────────
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
 hwclock --systohc
 echo "en_US.UTF-8 UTF-8" > /etc/locale.gen
 locale-gen
-echo "LANG=en_US.UTF-8" > /etc/locale.conf
-echo "KEYMAP=us" > /etc/vconsole.conf
-echo "$HOSTNAME" > /etc/hostname
+echo "LANG=en_US.UTF-8"  > /etc/locale.conf
+echo "KEYMAP=us"          > /etc/vconsole.conf
+echo "$HOSTNAME"          > /etc/hostname
 
-# 2. User & Sudo
-useradd -m -G wheel -s /bin/bash "$USERNAME"
-echo "$USERNAME:$PASSWORD" | chpasswd > /dev/null 2>&1
-# Enable standard sudo for wheel group (requires password)
+# ── 2. User & sudo ───────────────────────────────────────────────────────────
+useradd -m -G wheel -s /bin/bash "\$_USERNAME"
+
+# Copy skeleton if home dir pre-existed (media drive mounts create it early)
+cp -rn /etc/skel/. "/home/\$_USERNAME/" 2>/dev/null || true
+chown -R "\$_USERNAME:\$_USERNAME" "/home/\$_USERNAME"
+
+# Set password without exposing it in process list or log
+echo "\$_PASSWORD" | passwd --stdin "\$_USERNAME" 2>/dev/null \
+    || echo "\$_USERNAME:\$_PASSWORD" | chpasswd
+
+# Permanent wheel sudo (requires password)
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
-# Grant temporary NOPASSWD to wheel group to ensure automated installation scripts don't hang
+
+# Temporary NOPASSWD for automated install steps; removed at end of chroot.
 echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/10-installer
 
-# 3. Bootloader (GRUB)
+# ── 3. Bootloader (GRUB) ─────────────────────────────────────────────────────
 pacman -S --noconfirm grub efibootmgr
 if [[ "$FS" == "luks" ]]; then
     ROOT_UUID=\$(blkid -s UUID -o value "$PART_ROOT")
@@ -209,83 +262,76 @@ fi
 grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 
-# 4. GPU Drivers
-log "Installing GPU drivers for $GPU_TYPE..."
+# ── 4. GPU Drivers ───────────────────────────────────────────────────────────
+log "Installing GPU drivers..."
 if echo "$GPU_TYPE" | grep -iq "nvidia"; then
-    pacman -S --noconfirm nvidia-dkms nvidia-utils || log "Failed to install nvidia-dkms, skipping..."
+    pacman -S --noconfirm nvidia-dkms nvidia-utils \
+        || log "nvidia-dkms install failed — skipping."
 fi
-
 if echo "$GPU_TYPE" | grep -iq "amd"; then
-    pacman -S --noconfirm xf86-video-amdgpu mesa vulkan-radeon || log "Failed to install AMD drivers, skipping..."
+    pacman -S --noconfirm xf86-video-amdgpu mesa vulkan-radeon \
+        || log "AMD driver install failed — skipping."
 fi
-
 if echo "$GPU_TYPE" | grep -iq "intel"; then
-    pacman -S --noconfirm mesa vulkan-intel intel-media-driver || log "Failed to install Intel drivers, skipping..."
+    pacman -S --noconfirm mesa vulkan-intel intel-media-driver \
+        || log "Intel driver install failed — skipping."
 fi
 
-# 5. Essential Services
-log "Enabling system services..."
+# ── 5. Core Services ─────────────────────────────────────────────────────────
+log "Enabling core services..."
 systemctl enable NetworkManager
+
 pacman -S --noconfirm timeshift cronie
 systemctl enable cronie
 
-# Configure Timeshift
-log "Configuring Timeshift snapshots..."
+# Pre-configure Timeshift (BTRFS mode, daily + weekly snapshots)
 mkdir -p /etc/timeshift
-ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+ROOT_UUID=\$(blkid -s UUID -o value "$PART_ROOT")
 cat > /etc/timeshift/timeshift.json <<TS_EOF
 {
-  "backup_device_uuid" : "$ROOT_UUID",
-  "parent_device_uuid" : "$ROOT_UUID",
-  "do_first_run" : "false",
-  "btrfs_mode" : "true",
+  "backup_device_uuid" : "\$ROOT_UUID",
+  "parent_device_uuid" : "\$ROOT_UUID",
+  "do_first_run"       : "false",
+  "btrfs_mode"         : "true",
   "include_btrfs_home" : "false",
-  "stop_cron_emails" : "true",
-  "schedule_monthly" : "false",
-  "schedule_weekly" : "true",
-  "schedule_daily" : "true",
-  "schedule_hourly" : "false",
-  "schedule_boot" : "true",
-  "count_monthly" : "0",
-  "count_weekly" : "2",
-  "count_daily" : "3",
-  "count_hourly" : "0",
-  "count_boot" : "2"
+  "stop_cron_emails"   : "true",
+  "schedule_monthly"   : "false",
+  "schedule_weekly"    : "true",
+  "schedule_daily"     : "true",
+  "schedule_hourly"    : "false",
+  "schedule_boot"      : "true",
+  "count_monthly"      : "0",
+  "count_weekly"       : "2",
+  "count_daily"        : "3",
+  "count_hourly"       : "0",
+  "count_boot"         : "2"
 }
 TS_EOF
 
-# Suppress cron emails for Timeshift
-if [ -f /etc/cron.d/timeshift-hourly ]; then
-    sed -i '1i MAILTO=""' /etc/cron.d/timeshift-hourly
-fi
-if [ -f /etc/cron.d/timeshift-boot ]; then
-    sed -i '1i MAILTO=""' /etc/cron.d/timeshift-boot
-fi
-
-# 6. fun007 Ecosystem Bootstrap
+# ── 6. fun007 Ecosystem Bootstrap ────────────────────────────────────────────
 log "Cloning fun007 and bootstrapping ecosystem..."
-# Ensure home directory permissions are correct
-chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
-
-# Run the remaining steps as the user with a full login shell to ensure correct environment
-su - "$USERNAME" <<UEOF
-mkdir -p "/home/$USERNAME/dev"
-git clone --depth 1 https://github.com/fam007e/fun007.git "/home/$USERNAME/dev/fun007"
-bash "/home/$USERNAME/dev/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
+su - "\$_USERNAME" <<UEOF
+mkdir -p "/home/\$_USERNAME/dev"
+git clone --depth 1 https://github.com/fam007e/fun007.git "/home/\$_USERNAME/dev/fun007"
+bash "/home/\$_USERNAME/dev/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
 UEOF
 
-# Cleanup: Remove temporary passwordless sudo access
-rm /etc/sudoers.d/10-installer
+# ── 7. Cleanup: revert temporary NOPASSWD ────────────────────────────────────
+rm -f /etc/sudoers.d/10-installer
+chmod 440 /etc/sudoers.d/../sudoers  # ensure base sudoers perms are correct
 
 log "Chroot configuration complete."
 EOF
 
-chmod +x /mnt/chroot_setup.sh
-arch-chroot /mnt /chroot_setup.sh
+chmod 700 /mnt/chroot_setup.sh
+
+# Pass credentials via environment — they never touch the script file.
+INST_USER="$USERNAME" INST_PASS="$PASSWORD" INST_LUKS="$LUKS_PASSWORD" \
+    arch-chroot /mnt /chroot_setup.sh
+
 rm /mnt/chroot_setup.sh
 
-log "Installation Successful! Unmounting and rebooting..."
+log "Installation complete. Unmounting and rebooting..."
 umount -R /mnt
 [[ "$FS" == "luks" ]] && cryptsetup close cryptroot
-# Use -f for a forced reboot if standard reboot hangs in ArchISO
 reboot -f
