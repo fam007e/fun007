@@ -34,9 +34,12 @@ read -rp "Enter timezone (e.g., Asia/Dhaka): " timezone < /dev/tty
 # --- 2. Disk Selection ---
 echo ""
 echo "Available disks:"
-lsblk -dpno NAME,SIZE,MODEL,ROTA | awk '{
-    type = ($4 == "0") ? "SSD/NVMe" : "HDD"
-    printf "  %-15s %-8s %-30s %s\n", $1, $2, $3, type
+lsblk -dpno NAME,SIZE,ROTA,TYPE,MODEL | awk '$4=="disk" {
+    type = ($3 == "0") ? "SSD/NVMe" : "HDD"
+    model = ""
+    for(i=5; i<=NF; i++) model = model (i==5 ? "" : " ") $i
+    if(model == "") model = "-"
+    printf "  %-15s %-8s %-30s %s\n", $1, $2, model, type
 }'
 read -rp "Enter installation disk (e.g., /dev/nvme0n1): " disk < /dev/tty
 
