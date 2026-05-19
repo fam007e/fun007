@@ -18,6 +18,9 @@ echo -e "${CYAN}${BOLD}fun007 Ecosystem Bootstrap${RESET}"
 echo "--------------------------------------------------------"
 
 # --- Environment Detection ---
+SUDO=""
+[ "$EUID" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO="sudo"
+
 if [ -d "/data/data/com.termux" ]; then
     echo -e "Detected environment: ${LIME}Termux (Android)${RESET}"
     echo "Fetching Termux Automaton..."
@@ -38,11 +41,11 @@ elif [ -f "/etc/arch-release" ]; then
             chmod +x /tmp/gen_config.sh /tmp/archinstall.sh
             
             echo "Launching configuration wizard..."
-            /tmp/gen_config.sh
+            bash /tmp/gen_config.sh
             
             if [ -f "config.json" ]; then
                 echo "Starting installation..."
-                sudo /tmp/archinstall.sh config.json
+                $SUDO bash /tmp/archinstall.sh config.json
             else
                 echo "Error: config.json was not generated. Aborting."
                 exit 1
@@ -53,11 +56,11 @@ elif [ -f "/etc/arch-release" ]; then
             # Run setup first, then suggest hardening
             curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-setup.sh -o /tmp/mirror_setup.sh
             chmod +x /tmp/mirror_setup.sh
-            sudo /tmp/mirror_setup.sh
+            $SUDO bash /tmp/mirror_setup.sh
             echo -e "\nSetup complete. Run hardening script? (y/n)"
             read -r harden < /dev/tty
             if [[ "$harden" =~ ^[Yy]$ ]]; then
-                curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-hardened.sh | sudo bash
+                curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-hardened.sh | $SUDO bash
             fi
             ;;
         3)
