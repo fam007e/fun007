@@ -229,6 +229,39 @@ systemctl enable NetworkManager
 pacman -S --noconfirm timeshift cronie
 systemctl enable cronie
 
+# Configure Timeshift
+log "Configuring Timeshift snapshots..."
+mkdir -p /etc/timeshift
+ROOT_UUID=$(blkid -s UUID -o value "$PART_ROOT")
+cat > /etc/timeshift/timeshift.json <<TS_EOF
+{
+  "backup_device_uuid" : "$ROOT_UUID",
+  "parent_device_uuid" : "$ROOT_UUID",
+  "do_first_run" : "false",
+  "btrfs_mode" : "true",
+  "include_btrfs_home" : "false",
+  "stop_cron_emails" : "true",
+  "schedule_monthly" : "false",
+  "schedule_weekly" : "true",
+  "schedule_daily" : "true",
+  "schedule_hourly" : "false",
+  "schedule_boot" : "true",
+  "count_monthly" : "0",
+  "count_weekly" : "2",
+  "count_daily" : "3",
+  "count_hourly" : "0",
+  "count_boot" : "2"
+}
+TS_EOF
+
+# Suppress cron emails for Timeshift
+if [ -f /etc/cron.d/timeshift-hourly ]; then
+    sed -i '1i MAILTO=""' /etc/cron.d/timeshift-hourly
+fi
+if [ -f /etc/cron.d/timeshift-boot ]; then
+    sed -i '1i MAILTO=""' /etc/cron.d/timeshift-boot
+fi
+
 # 6. fun007 Ecosystem Bootstrap
 log "Cloning fun007 and bootstrapping ecosystem..."
 # Ensure home directory permissions are correct
