@@ -6,7 +6,7 @@
 # Usage: curl -fsSL https://fam007e.github.io/fun007/bootstrap.sh | bash
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
 # --- Styles ---
 BOLD="\033[1m"
