@@ -223,7 +223,13 @@ if echo "$GPU_TYPE" | grep -iq "intel"; then
     pacman -S --noconfirm mesa vulkan-intel intel-media-driver || log "Failed to install Intel drivers, skipping..."
 fi
 
-# 5. fun007 Ecosystem Bootstrap
+# 5. Essential Services
+log "Enabling system services..."
+systemctl enable NetworkManager
+pacman -S --noconfirm timeshift cronie
+systemctl enable cronie
+
+# 6. fun007 Ecosystem Bootstrap
 log "Cloning fun007 and bootstrapping ecosystem..."
 # Ensure home directory permissions are correct
 chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
@@ -234,11 +240,6 @@ mkdir -p "/home/$USERNAME/dev"
 git clone --depth 1 https://github.com/fam007e/fun007.git "/home/$USERNAME/dev/fun007"
 bash "/home/$USERNAME/dev/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
 UEOF
-
-# 6. Timeshift Setup
-# cronie drives scheduled snapshots; timeshift-autosnap triggers on pacman.
-pacman -S --noconfirm timeshift cronie
-systemctl enable cronie
 
 # Cleanup: Remove temporary passwordless sudo access
 rm /etc/sudoers.d/10-installer
