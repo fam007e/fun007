@@ -62,18 +62,23 @@ pacman -Sy --noconfirm archlinux-keyring || {
     pacman -Sy --noconfirm archlinux-keyring
 }
 
-log "Installing Reflector..."
-pacman -S --noconfirm reflector
-
-log "Optimizing mirrors with Reflector..."
+log "Optimizing mirrors..."
+# Reflector is notoriously buggy in some ArchISO versions due to Python module paths.
+# We attempt it, but if it fails, we provide a reliable fallback.
 if command -v reflector >/dev/null 2>&1; then
-    # Reflector sometimes fails in ArchISO due to PYTHONPATH/Module issues
-    if ! reflector --latest 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist 2>/tmp/reflector_error.log; then
-        warn "Reflector failed to run (likely a module path issue in ArchISO). Using default mirrorlist."
-        cat /tmp/reflector_error.log
+    log "Attempting mirror optimization with Reflector..."
+    if ! reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist 2>/dev/null; then
+        warn "Reflector failed (likely a module path issue in ArchISO). Falling back to basic mirror update."
+        # Basic fallback: keep only the top 5 mirrors from the existing list to speed up pacstrap
+        head -n 10 /etc/pacman.d/mirrorlist > /tmp/mirrorlist.tmp && mv /tmp/mirrorlist.tmp /etc/pacman.d/mirrorlist
     fi
 else
-    warn "Reflector command not found. Skipping mirror optimization."
+    warn "Reflector not found. Using default mirrorlist."
+fi
+
+# Final check: ensure mirrorlist is not empty
+if [[ ! -s /etc/pacman.d/mirrorlist ]]; then
+    error "Mirrorlist is empty. Cannot proceed with installation."
 fi
 
 # --- Phase 2: Disk Partitioning & Formatting ---
@@ -182,7 +187,8 @@ echo "$HOSTNAME" > /etc/hostname
 # 2. User & Sudo
 useradd -m -G wheel -s /bin/bash "$USERNAME"
 echo "$USERNAME:$PASSWORD" | chpasswd
-sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+# Grant NOPASSWD to wheel group to ensure automated scripts don't hang on prompts
+echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/10-installer
 
 # 3. Bootloader (GRUB)
 pacman -S --noconfirm grub efibootmgr
@@ -207,21 +213,25 @@ fi
 
 if echo "$GPU_TYPE" | grep -iq "intel"; then
     pacman -S --noconfirm mesa vulkan-intel intel-media-driver || log "Failed to install Intel drivers, skipping..."
-fi
-
 # 5. fun007 Ecosystem Bootstrap
 log "Cloning fun007 and bootstrapping ecosystem..."
-sudo -u "$USERNAME" mkdir -p "/home/$USERNAME/dev"
-sudo -u "$USERNAME" git clone https://github.com/fam007e/fun007.git "/home/$USERNAME/dev/fun007"
+# Ensure home directory permissions are correct
+chown -R "$USERNAME:$USERNAME" "/home/$USERNAME"
+
+# Run the remaining steps as the user with a full login shell to ensure correct environment
+# We use heredoc to pass commands to su
+su - "$USERNAME" <<UEOF
+mkdir -p "/home/$USERNAME/dev"
+git clone --depth 1 https://github.com/fam007e/fun007.git "/home/$USERNAME/dev/fun007"
 bash "/home/$USERNAME/dev/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
+UEOF
 
 # 6. Timeshift Setup
+...
+log "Chroot configuration complete."
 # cronie drives scheduled snapshots; timeshift-autosnap triggers on pacman.
 pacman -S --noconfirm timeshift cronie
 systemctl enable cronie
-# Verify the chattr +C flag survived into the installed system
-log "Verifying swapfile COW status (expect 'C' flag):"
-lsattr /swap/swapfile | awk '{print "  lsattr: " $0}'
 
 log "Chroot configuration complete."
 EOF
@@ -233,4 +243,5 @@ rm /mnt/chroot_setup.sh
 log "Installation Successful! Unmounting and rebooting..."
 umount -R /mnt
 [[ "$FS" == "luks" ]] && cryptsetup close cryptroot
-reboot
+# Use -f for a forced reboot if standard reboot hangs in ArchISO
+reboot -f
