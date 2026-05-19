@@ -36,8 +36,8 @@ elif [ -f "/etc/arch-release" ]; then
     case $choice in
         1)
             echo "Fetching Arch Modular Installer suite..."
-            curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/generate_config.sh -o /tmp/gen_config.sh
-            curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/archinstall_interactive.sh -o /tmp/archinstall.sh
+            curl -fsSL -H "Cache-Control: no-cache" https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/generate_config.sh -o /tmp/gen_config.sh
+            curl -fsSL -H "Cache-Control: no-cache" https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/archinstall_interactive.sh -o /tmp/archinstall.sh
             chmod +x /tmp/gen_config.sh /tmp/archinstall.sh
             
             echo "Launching configuration wizard..."
@@ -45,7 +45,7 @@ elif [ -f "/etc/arch-release" ]; then
             
             if [ -f "config.json" ]; then
                 echo "Starting installation..."
-                $SUDO bash /tmp/archinstall.sh config.json
+                $SUDO bash /tmp/archinstall.sh "$(pwd)/config.json"
             else
                 echo "Error: config.json was not generated. Aborting."
                 exit 1
@@ -54,18 +54,18 @@ elif [ -f "/etc/arch-release" ]; then
         2)
             echo "Fetching Hardened Mirror Suite..."
             # Run setup first, then suggest hardening
-            curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-setup.sh -o /tmp/mirror_setup.sh
+            curl -fsSL -H "Cache-Control: no-cache" https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-setup.sh -o /tmp/mirror_setup.sh
             chmod +x /tmp/mirror_setup.sh
             $SUDO bash /tmp/mirror_setup.sh
             echo -e "\nSetup complete. Run hardening script? (y/n)"
             read -r harden < /dev/tty
             if [[ "$harden" =~ ^[Yy]$ ]]; then
-                curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-hardened.sh | $SUDO bash
+                curl -fsSL -H "Cache-Control: no-cache" https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-hardened.sh | $SUDO bash
             fi
             ;;
         3)
             echo "Fetching Zsh/Ecosystem Bootstrap..."
-            bash <(curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh)
+            bash <(curl -fsSL -H "Cache-Control: no-cache" https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh)
             ;;
         *)
             echo "Invalid selection. Aborting."
