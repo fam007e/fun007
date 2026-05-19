@@ -147,7 +147,7 @@ log "Swapfile created: $(ls -lh /mnt/swap/swapfile | awk '{print $5}')"
 
 # --- Phase 3: Base Installation ---
 log "Phase 3: Bootstrapping base system..."
-BASE_PKGS=(base base-devel linux-firmware $KERNEL ${KERNEL}-headers git neovim networkmanager sudo btrfs-progs jq)
+BASE_PKGS=(base base-devel dkms linux-firmware $KERNEL ${KERNEL}-headers git neovim networkmanager sudo btrfs-progs)
 pacstrap -K /mnt "${BASE_PKGS[@]}"
 
 # genfstab captures all currently mounted filesystems by UUID — including
@@ -166,6 +166,9 @@ cat > /mnt/chroot_setup.sh <<EOF
 #!/bin/bash
 set -e
 log() { echo -e "\033[1;32m[CHROOT]\033[0m \$1"; }
+
+# Sync package databases
+pacman -Sy --noconfirm
 
 # 1. System Localization
 ln -sf /usr/share/zoneinfo/$TIMEZONE /etc/localtime
@@ -193,10 +196,11 @@ grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # 4. GPU Drivers
+log "Installing GPU drivers for $GPU_TYPE..."
 if echo "$GPU_TYPE" | grep -iq "nvidia"; then
-    [[ "$KERNEL" == "linux-lts" ]] && pacman -S --noconfirm nvidia-lts || pacman -S --noconfirm nvidia
+    pacman -S --noconfirm nvidia-dkms nvidia-utils || log "Failed to install nvidia-dkms, skipping..."
 elif echo "$GPU_TYPE" | grep -iq "amd"; then
-    pacman -S --noconfirm xf86-video-amdgpu
+    pacman -S --noconfirm xf86-video-amdgpu || log "Failed to install xf86-video-amdgpu, skipping..."
 fi
 
 # 5. fun007 Ecosystem Bootstrap
