@@ -66,8 +66,8 @@ phase1_bootstrap() {
 phase2_git_ssh() {
     log "Phase 2: Setting up Git and SSH identity..."
     if [[ ! -f ~/.ssh/id_ed25519 ]]; then
-        read -rp "Enter your GitHub username: " username
-        read -rp "Enter your GitHub email: " email
+        read -rp "Enter your GitHub username: " username < /dev/tty
+        read -rp "Enter your GitHub email: " email < /dev/tty
         git config --global user.name "$username"
         git config --global user.email "$email"
         git config --global init.defaultBranch main
@@ -80,7 +80,7 @@ phase2_git_ssh() {
         echo "ACTION REQUIRED: Add key to GitHub"
         echo "URL: https://github.com/settings/keys"
         echo -e "${BLUE}============================================${NC}"
-        read -rp "Press Enter once the key is added to GitHub..."
+        read -rp "Press Enter once the key is added to GitHub..." < /dev/tty
     else
         log "SSH identity already exists. Skipping generation."
     fi
@@ -212,7 +212,7 @@ phase7_finalize() {
         for i in "${!themes[@]}"; do
             echo "$((i+1)). $(basename "${themes[$i]}" .properties)"
         done
-        read -rp "Select theme number [default: 1]: " t_choice
+        read -rp "Select theme number [default: 1]: " t_choice < /dev/tty
         selected_theme="${themes[$((t_choice-1))]}"
         [[ -f "$selected_theme" ]] && cp "$selected_theme" ~/.termux/colors.properties
     fi

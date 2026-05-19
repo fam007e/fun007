@@ -60,8 +60,8 @@ log "Phase 2: Preparing storage on $DISK..."
 sgdisk -Z "$DISK"
 sgdisk -a 2048 -o "$DISK"
 
-# 1. EFI System Partition (512MB)
-sgdisk -n 1::+512M --typecode=1:ef00 --change-name=1:'EFIBOOT' "$DISK"
+# 1. EFI System Partition (2GB)
+sgdisk -n 1::+2G --typecode=1:ef00 --change-name=1:'EFIBOOT' "$DISK"
 # 2. Root Partition (Remainder)
 sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:'ROOT' "$DISK"
 
@@ -96,12 +96,12 @@ umount /mnt
 # Mount subvolumes with SSD/compression optimizations
 MOUNT_OPTS="noatime,compress=zstd:1,space_cache=v2"
 mount -o "$MOUNT_OPTS,subvol=@" "$TARGET_ROOT" /mnt
-mkdir -p /mnt/{boot/efi,home,var,tmp,.snapshots,swap}
+mkdir -p /mnt/{boot,home,var,tmp,.snapshots,swap}
 mount -o "$MOUNT_OPTS,subvol=@home"        "$TARGET_ROOT" /mnt/home
 mount -o "$MOUNT_OPTS,subvol=@var"         "$TARGET_ROOT" /mnt/var
 mount -o "$MOUNT_OPTS,subvol=@tmp"         "$TARGET_ROOT" /mnt/tmp
 mount -o "$MOUNT_OPTS,subvol=@.snapshots"  "$TARGET_ROOT" /mnt/.snapshots
-mount "$PART_EFI" /mnt/boot/efi
+mount "$PART_EFI" /mnt/boot
 
 # @swap gets its own mount — NO compress, NO COW.
 # compress on a swapfile subvolume is silently ignored by the kernel but
@@ -166,7 +166,7 @@ if [[ "$FS" == "luks" ]]; then
     sed -i 's|^HOOKS=.*|HOOKS=(base udev autodetect modconf block encrypt filesystems keyboard fsck)|' /etc/mkinitcpio.conf
     mkinitcpio -P
 fi
-grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=GRUB
+grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # 4. GPU Drivers

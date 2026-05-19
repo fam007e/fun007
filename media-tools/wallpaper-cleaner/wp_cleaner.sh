@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # Prompt user for the wallpaper directory relative to home
-read -rp "Enter the wallpaper directory relative to \$HOME/: " RELATIVE_WALLPAPER_DIR
+read -rp "Enter the wallpaper directory relative to $HOME/: " RELATIVE_WALLPAPER_DIR < /dev/tty
 WALLPAPER_DIR="$HOME/$RELATIVE_WALLPAPER_DIR"
 
 # Check if the directory exists
@@ -12,8 +12,8 @@ fi
 
 # Function to get dimensions with validation
 get_dimensions() {
-    read -rp "Enter the minimum width in pixels: " MIN_WIDTH
-    read -rp "Enter the minimum height in pixels: " MIN_HEIGHT
+    read -rp "Enter the minimum width in pixels: " MIN_WIDTH < /dev/tty
+    read -rp "Enter the minimum height in pixels: " MIN_HEIGHT < /dev/tty
 }
 
 # Get initial dimensions from the user
@@ -24,7 +24,7 @@ while true; do
     echo "You have entered:"
     echo "Minimum width: $MIN_WIDTH pixels"
     echo "Minimum height: $MIN_HEIGHT pixels"
-    read -rp "Do you want to proceed with these values? (yes/no): " CONFIRMATION
+    read -rp "Do you want to proceed with these values? (yes/no): " CONFIRMATION < /dev/tty
     case $CONFIRMATION in
         [Yy]* ) break;;
         [Nn]* ) get_dimensions;;

@@ -28,14 +28,25 @@ elif [ -f "/etc/arch-release" ]; then
     echo "1) Fresh System Install (BTRFS/LUKS - For Live ISO)"
     echo "2) Mirror Server Setup (Tier-2 Hardened + Monitoring)"
     echo "3) Desktop Environment Bootstrap (Zsh/Dev Tools/Configs)"
-    read -p "Selection [1-3]: " choice
+    read -p "Selection [1-3]: " choice < /dev/tty
 
     case $choice in
         1)
-            echo "Fetching Arch Modular Installer..."
+            echo "Fetching Arch Modular Installer suite..."
+            curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/generate_config.sh -o /tmp/gen_config.sh
             curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/archinstall_interactive.sh -o /tmp/archinstall.sh
-            chmod +x /tmp/archinstall.sh
-            sudo /tmp/archinstall.sh
+            chmod +x /tmp/gen_config.sh /tmp/archinstall.sh
+            
+            echo "Launching configuration wizard..."
+            /tmp/gen_config.sh
+            
+            if [ -f "config.json" ]; then
+                echo "Starting installation..."
+                sudo /tmp/archinstall.sh config.json
+            else
+                echo "Error: config.json was not generated. Aborting."
+                exit 1
+            fi
             ;;
         2)
             echo "Fetching Hardened Mirror Suite..."
@@ -44,7 +55,7 @@ elif [ -f "/etc/arch-release" ]; then
             chmod +x /tmp/mirror_setup.sh
             sudo /tmp/mirror_setup.sh
             echo -e "\nSetup complete. Run hardening script? (y/n)"
-            read -r harden
+            read -r harden < /dev/tty
             if [[ "$harden" =~ ^[Yy]$ ]]; then
                 curl -fsSL https://raw.githubusercontent.com/fam007e/fun007/main/system-admin/arch-install/arch-mirror-hardened.sh | sudo bash
             fi

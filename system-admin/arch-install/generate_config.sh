@@ -16,22 +16,22 @@ echo "    Arch Linux Installation Config Wizard         "
 echo "--------------------------------------------------"
 
 # 1. Identity
-read -rp "Enter username: " username
-read -rs -p "Enter password: " password; echo
-read -rp "Enter hostname: " hostname
-read -rp "Enter timezone (e.g., Asia/Dhaka): " timezone
+read -rp "Enter username: " username < /dev/tty
+read -rs -p "Enter password: " password < /dev/tty; echo
+read -rp "Enter hostname: " hostname < /dev/tty
+read -rp "Enter timezone (e.g., Asia/Dhaka): " timezone < /dev/tty
 
 # 2. Disk Selection
 lsblk -dpno NAME,SIZE,MODEL
-read -rp "Enter installation disk (e.g., /dev/nvme0n1): " disk
+read -rp "Enter installation disk (e.g., /dev/nvme0n1): " disk < /dev/tty
 
 # 3. Filesystem & Encryption
 echo "Select Filesystem Type:"
 echo "1) btrfs (Standard)"
 echo "2) luks (Encrypted BTRFS)"
-read -rp "Choice [1-2]: " fs_choice
+read -rp "Choice [1-2]: " fs_choice < /dev/tty
 case $fs_choice in
-    2) filesystem="luks"; read -rs -p "Enter LUKS encryption password: " luks_password; echo ;;
+    2) filesystem="luks"; read -rs -p "Enter LUKS encryption password: " luks_password < /dev/tty; echo ;;
     *) filesystem="btrfs"; luks_password="" ;;
 esac
 
@@ -39,7 +39,7 @@ esac
 echo "Select Kernel:"
 echo "1) linux (Stable/Latest)"
 echo "2) linux-lts (Long Term Support)"
-read -rp "Choice [1-2]: " k_choice
+read -rp "Choice [1-2]: " k_choice < /dev/tty
 [[ "$k_choice" == "2" ]] && kernel="linux-lts" || kernel="linux"
 
 # 5. Swap Size
@@ -48,7 +48,7 @@ TOTAL_RAM_GiB=$(awk '/MemTotal/ {printf "%d", $2/1024/1024 + 0.5}' /proc/meminfo
 echo ""
 echo "Detected RAM: ${TOTAL_RAM_GiB}GiB"
 echo "Enter swap size in GiB (press Enter to use ${TOTAL_RAM_GiB}G default):"
-read -rp "Swap size [${TOTAL_RAM_GiB}]: " swap_input
+read -rp "Swap size [${TOTAL_RAM_GiB}]: " swap_input < /dev/tty
 swap_size="${swap_input:-$TOTAL_RAM_GiB}"
 
 # Validate numeric

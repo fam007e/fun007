@@ -8,19 +8,19 @@ function check_file_exists() {
 }
 
 function verify_sha256sum() {
-    read -p "Enter the SHA-256 checksum file: " sha256_file
+    read -p "Enter the SHA-256 checksum file: " sha256_file < /dev/tty
     check_file_exists "$sha256_file"
     sha256sum -c "$sha256_file" --ignore-missing
 }
 
 function verify_b2sum() {
-    read -p "Enter the BLAKE2 checksum file: " b2sum_file
+    read -p "Enter the BLAKE2 checksum file: " b2sum_file < /dev/tty
     check_file_exists "$b2sum_file"
     b2sum -c "$b2sum_file" --ignore-missing
 }
 
 function verify_signature() {
-    read -p "Enter the signature file: " sig_file
+    read -p "Enter the signature file: " sig_file < /dev/tty
     check_file_exists "$sig_file"
 
     # Extract the key ID from the signature file
@@ -30,7 +30,7 @@ function verify_signature() {
         echo "Signing key $key_id is already imported."
     else
         echo "Signing key $key_id not found. Please provide the signing key file."
-        read -p "Enter the signing key file: " key_file
+        read -p "Enter the signing key file: " key_file < /dev/tty
         check_file_exists "$key_file"
         gpg --import "$key_file"
     fi
@@ -52,7 +52,7 @@ function main() {
     echo "2. BLAKE2 Checksum"
     echo "3. GPG Signature"
     echo "4. All of the above"
-    read -p "Enter your choices (space-separated): " -a choices
+    read -p "Enter your choices (space-separated): " -a choices < /dev/tty
 
     for choice in "${choices[@]}"; do
         case $choice in

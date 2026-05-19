@@ -3,13 +3,13 @@
 # Function to prompt for GitHub configuration
 setup_git_config() {
     # Prompt for GitHub email
-    read -p "Enter your GitHub email address: " email
+    read -p "Enter your GitHub email address: " email < /dev/tty
 
     # Prompt for SSH key type
     echo "Choose your SSH key type:"
     echo "1. Ed25519 (recommended)"
     echo "2. RSA (legacy)"
-    read -p "Enter your choice (1 or 2): " key_type
+    read -p "Enter your choice (1 or 2): " key_type < /dev/tty
 
     # Set key algorithm based on user choice
     case $key_type in
@@ -22,7 +22,7 @@ setup_git_config() {
     esac
 
     # Prompt for custom key name
-    read -p "Enter a custom SSH key name (leave blank for default): " key_name
+    read -p "Enter a custom SSH key name (leave blank for default): " key_name < /dev/tty
 
     # Set the SSH key path based on user input
     ssh_key_path="${HOME}/.ssh/${key_name:-id_$key_algo}"
@@ -31,7 +31,7 @@ setup_git_config() {
     ssh-keygen -t $key_algo -C "$email" -f "$ssh_key_path"
 
     # Prompt for passphrase usage
-    read -p "Do you want to use a passphrase? (y/n): " use_passphrase
+    read -p "Do you want to use a passphrase? (y/n): " use_passphrase < /dev/tty
 
     # If user opts for a passphrase, add key to SSH agent
     if [ "$use_passphrase" == "y" ]; then
@@ -52,7 +52,7 @@ copy_and_confirm_ssh_key() {
 
     # Prompt user to confirm they've added the key to GitHub
     while true; do
-        read -p "Have you pasted your SSH public key into your GitHub account? (y/n): " yn
+        read -p "Have you pasted your SSH public key into your GitHub account? (y/n): " yn < /dev/tty
         case $yn in
             [Yy]* ) echo "Proceeding..."; break;;
             [Nn]* ) echo "Please paste your SSH public key into GitHub and try again."; exit;;

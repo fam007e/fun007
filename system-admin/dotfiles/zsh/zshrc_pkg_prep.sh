@@ -45,20 +45,23 @@ elif command_exists paru; then
     AUR_HELPER="paru"
 else
     echo "Select an AUR helper to install:"
-    select choice in "yay" "paru"; do
-        case $choice in
-            yay|paru)
-                info "Installing $choice..."
-                temp_dir=$(mktemp -d)
-                git clone "https://aur.archlinux.org/${choice}.git" "$temp_dir"
-                (cd "$temp_dir" && makepkg -si --noconfirm)
-                rm -rf "$temp_dir"
-                AUR_HELPER="$choice"
-                break
-                ;;
+    echo "1) yay"
+    echo "2) paru"
+    while true; do
+        read -rp "Choice [1-2]: " aur_choice < /dev/tty
+        case $aur_choice in
+            1) choice="yay"; break ;;
+            2) choice="paru"; break ;;
             *) warn "Invalid option. Please select 1 or 2." ;;
         esac
     done
+
+    info "Installing $choice..."
+    temp_dir=$(mktemp -d)
+    git clone "https://aur.archlinux.org/${choice}.git" "$temp_dir"
+    (cd "$temp_dir" && makepkg -si --noconfirm)
+    rm -rf "$temp_dir"
+    AUR_HELPER="$choice"
 fi
 
 # --- Phase 3: Bulk Package Installation ---
