@@ -187,7 +187,6 @@ PubkeyAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
 PasswordAuthentication no
 PermitEmptyPasswords no
-ChallengeResponseAuthentication no
 KbdInteractiveAuthentication no
 
 # Disable unused auth methods
@@ -304,7 +303,7 @@ fi
 # so this just notifies — change ExecStart to run pacman -Syu for full auto.
 
 echo "Setting up security update notifications..."
-pacman -S --noconfirm --needed pacman-contrib
+pacman -S --noconfirm --needed pacman-contrib arch-audit
 
 cat > /etc/systemd/system/arch-security-check.service <<'EOF'
 [Unit]
@@ -315,9 +314,8 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 # arch-audit checks packages against the Arch security tracker.
-# Install with: pacman -S arch-audit
 ExecStartPre=/usr/bin/pacman -Sy --noconfirm
-ExecStart=/bin/bash -c 'pacman -Qu 2>/dev/null | wc -l | xargs -I{} echo "{} package(s) need updating" | systemd-cat -t arch-security-check -p warning'
+ExecStart=/bin/bash -c 'arch-audit -u | systemd-cat -t arch-security-check -p warning'
 EOF
 
 cat > /etc/systemd/system/arch-security-check.timer <<'EOF'

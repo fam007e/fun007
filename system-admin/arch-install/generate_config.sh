@@ -4,7 +4,7 @@
 # Purpose: Interactive wizard to generate config.json for the Arch Installer.
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
 log() { echo -e "\033[1;34m[CONFIG]\033[0m $1"; }
 

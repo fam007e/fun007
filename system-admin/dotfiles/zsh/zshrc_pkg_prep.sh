@@ -12,7 +12,7 @@
 #   6. Deploy configuration files to $HOME
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
 # --- Helper Functions ---
 SUDO=""
@@ -72,7 +72,7 @@ info "Phase 3: Installing packages via $AUR_HELPER..."
 
 PACMAN_PACKAGES=(
     zsh curl wget jq cmake ninja neovim xclip fzf zoxide bat eza 
-    multitail python python-pip thefuck tldr unzip tar gzip 
+    python python-pip thefuck tldr unzip tar gzip 
     net-tools ripgrep fd zsh-completions zsh-autosuggestions 
     p7zip unrar qbittorrent xdotool libnotify
     jdk21-openjdk android-tools
@@ -81,7 +81,7 @@ PACMAN_PACKAGES=(
 )
 
 AUR_PACKAGES=(
-    oh-my-posh rate-mirrors khal
+    oh-my-posh rate-mirrors khal multitail
 )
 
 $SUDO pacman -S --noconfirm --needed "${PACMAN_PACKAGES[@]}"

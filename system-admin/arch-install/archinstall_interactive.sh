@@ -9,7 +9,7 @@
 #   4. Chroot phase (Configuration & fun007 Bootstrap)
 # ==============================================================================
 
-set -e
+set -euo pipefail
 
 # --- Initial Setup & Logging ---
 if [[ "$#" -ne 1 ]]; then
@@ -93,8 +93,14 @@ sgdisk -n 1::+2G --typecode=1:ef00 --change-name=1:'EFIBOOT' "$DISK"
 # 2. Root Partition (Remainder)
 sgdisk -n 2::-0 --typecode=2:8300 --change-name=2:'ROOT' "$DISK"
 
-PART_EFI=$(echo "$DISK" | grep -q "nvme" && echo "${DISK}p1" || echo "${DISK}1")
-PART_ROOT=$(echo "$DISK" | grep -q "nvme" && echo "${DISK}p2" || echo "${DISK}2")
+# Handle partition naming for NVMe and eMMC devices
+if [[ "$DISK" =~ "nvme" || "$DISK" =~ "mmcblk" ]]; then
+    PART_EFI="${DISK}p1"
+    PART_ROOT="${DISK}p2"
+else
+    PART_EFI="${DISK}1"
+    PART_ROOT="${DISK}2"
+fi
 
 # Filesystem Setup (LUKS/BTRFS focus)
 if [[ "$FS" == "luks" ]]; then
@@ -186,7 +192,7 @@ echo "$HOSTNAME" > /etc/hostname
 
 # 2. User & Sudo
 useradd -m -G wheel -s /bin/bash "$USERNAME"
-echo "$USERNAME:$PASSWORD" | chpasswd
+echo "$USERNAME:$PASSWORD" | chpasswd > /dev/null 2>&1
 # Enable standard sudo for wheel group (requires password)
 sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 # Grant temporary NOPASSWD to wheel group to ensure automated installation scripts don't hang

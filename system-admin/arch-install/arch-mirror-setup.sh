@@ -38,10 +38,10 @@ mkdir -p /srv/mirror/archlinux
 chown archmirror:archmirror /srv/mirror/archlinux
 chmod 755 /srv/mirror/archlinux
 
-# 5. Initial full sync
-# Run as archmirror so all files are owned by the sync user from the start.
-# If root creates files here, the hourly sync (also archmirror) cannot
-# delete or overwrite them, leaving stale packages indefinitely.
+# Initial full sync
+# POLICY NOTE: Arch mirror policy prefers syncing from a nearby Tier-2 mirror.
+# Replace rsync://rsync.archlinux.org/archlinux/ with a mirror from:
+# https://archlinux.org/mirrors/ (filter by rsync and your country).
 echo "Starting initial full sync from official Arch mirror..."
 echo "This can take 6-30 hours depending on bandwidth."
 
