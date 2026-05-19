@@ -22,6 +22,7 @@ LOG_FILE="/tmp/arch_install_$(date +%Y%m%d_%H%M%S).log"
 exec > >(tee -a "$LOG_FILE") 2>&1
 
 log()   { echo -e "\033[1;34m[$(date '+%H:%M:%S')]\033[0m $1"; }
+warn()  { echo -e "\033[1;33m[$(date '+%H:%M:%S')] [WARN]\033[0m $1"; }
 error() { echo -e "\033[1;31m[ERROR]\033[0m $1"; exit 1; }
 
 # --- Configuration Retrieval ---
@@ -51,9 +52,29 @@ log "Phase 1: Hardware detection and mirror optimization..."
 GPU_TYPE=$(lspci | grep -E "VGA|3D|Display" || true)
 log "Detected GPU: $GPU_TYPE"
 
-# Mirror Optimization (Reflector)
-pacman -Sy --noconfirm archlinux-keyring reflector
-reflector --latest 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+# Keyring & Mirror Optimization
+# On older ISOs, we might need to initialize the keyring first
+log "Updating Arch Linux Keyring..."
+pacman -Sy --noconfirm archlinux-keyring || {
+    warn "Keyring update failed. Attempting to re-initialize pacman-key..."
+    pacman-key --init
+    pacman-key --populate archlinux
+    pacman -Sy --noconfirm archlinux-keyring
+}
+
+log "Installing Reflector..."
+pacman -S --noconfirm reflector
+
+log "Optimizing mirrors with Reflector..."
+if command -v reflector >/dev/null 2>&1; then
+    # Reflector sometimes fails in ArchISO due to PYTHONPATH/Module issues
+    if ! reflector --latest 10 --protocol https --sort rate --save /etc/pacman.d/mirrorlist 2>/tmp/reflector_error.log; then
+        warn "Reflector failed to run (likely a module path issue in ArchISO). Using default mirrorlist."
+        cat /tmp/reflector_error.log
+    fi
+else
+    warn "Reflector command not found. Skipping mirror optimization."
+fi
 
 # --- Phase 2: Disk Partitioning & Formatting ---
 log "Phase 2: Preparing storage on $DISK..."
