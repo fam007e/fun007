@@ -20,7 +20,14 @@ echo "--------------------------------------------------"
 
 # 1. Identity
 read -rp "Enter username: " username < /dev/tty
-read -rs -p "Enter password: " password < /dev/tty; echo
+
+while true; do
+    read -rs -p "Enter password: " password < /dev/tty; echo
+    read -rs -p "Verify password: " password_verify < /dev/tty; echo
+    [ "$password" == "$password_verify" ] && break
+    echo "Passwords do not match. Please try again."
+done
+
 read -rp "Enter hostname: " hostname < /dev/tty
 read -rp "Enter timezone (e.g., Asia/Dhaka): " timezone < /dev/tty
 
@@ -34,7 +41,15 @@ echo "1) btrfs (Standard)"
 echo "2) luks (Encrypted BTRFS)"
 read -rp "Choice [1-2]: " fs_choice < /dev/tty
 case $fs_choice in
-    2) filesystem="luks"; read -rs -p "Enter LUKS encryption password: " luks_password < /dev/tty; echo ;;
+    2) 
+        filesystem="luks"
+        while true; do
+            read -rs -p "Enter LUKS encryption password: " luks_password < /dev/tty; echo
+            read -rs -p "Verify LUKS encryption password: " luks_password_verify < /dev/tty; echo
+            [ "$luks_password" == "$luks_password_verify" ] && break
+            echo "Passwords do not match. Please try again."
+        done
+        ;;
     *) filesystem="btrfs"; luks_password="" ;;
 esac
 
