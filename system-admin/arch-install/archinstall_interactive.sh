@@ -187,7 +187,9 @@ echo "$HOSTNAME" > /etc/hostname
 # 2. User & Sudo
 useradd -m -G wheel -s /bin/bash "$USERNAME"
 echo "$USERNAME:$PASSWORD" | chpasswd
-# Grant NOPASSWD to wheel group to ensure automated scripts don't hang on prompts
+# Enable standard sudo for wheel group (requires password)
+sed -i 's/^# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
+# Grant temporary NOPASSWD to wheel group to ensure automated installation scripts don't hang
 echo "%wheel ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/10-installer
 
 # 3. Bootloader (GRUB)
@@ -231,6 +233,9 @@ UEOF
 # cronie drives scheduled snapshots; timeshift-autosnap triggers on pacman.
 pacman -S --noconfirm timeshift cronie
 systemctl enable cronie
+
+# Cleanup: Remove temporary passwordless sudo access
+rm /etc/sudoers.d/10-installer
 
 log "Chroot configuration complete."
 EOF
