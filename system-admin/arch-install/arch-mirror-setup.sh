@@ -29,6 +29,13 @@ $SUDO pacman -S --noconfirm --needed \
     cronie btrfs-progs smartmontools \
     vnstat iftop iotop htop
 
+# Detect and install microcode
+if grep -q "GenuineIntel" /proc/cpuinfo; then
+    $SUDO pacman -S --noconfirm --needed intel-ucode
+elif grep -q "AuthenticAMD" /proc/cpuinfo; then
+    $SUDO pacman -S --noconfirm --needed amd-ucode
+fi
+
 # =============================================================================
 # 3. Mirror user (dedicated service account)
 # =============================================================================

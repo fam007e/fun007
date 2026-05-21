@@ -16,6 +16,7 @@ Unlike traditional monolithic installers, this suite follows a phased approach:
   - Creates the `@`, `@home`, `@var`, `@tmp`, and `@.snapshots` subvolume layout required for **Timeshift**.
 - **Hardware Optimization**: 
   - Automatic GPU detection (NVIDIA/AMD/Intel).
+  - Automatic CPU microcode detection (Intel/AMD).
   - Handles NVIDIA-LTS driver mapping if the LTS kernel is selected.
   - Applies `zstd` compression and `noatime` mount options for SSD longevity.
 - **fun007 Integration**: 

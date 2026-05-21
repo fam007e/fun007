@@ -67,6 +67,14 @@ else
     AUR_HELPER="$choice"
 fi
 
+# --- Phase 2b: Hardware-Specific Packages ---
+info "Phase 2b: Checking for hardware-specific updates (microcode)..."
+if grep -q "GenuineIntel" /proc/cpuinfo; then
+    $SUDO pacman -S --noconfirm --needed intel-ucode
+elif grep -q "AuthenticAMD" /proc/cpuinfo; then
+    $SUDO pacman -S --noconfirm --needed amd-ucode
+fi
+
 # --- Phase 3: Bulk Package Installation ---
 info "Phase 3: Installing packages via $AUR_HELPER..."
 

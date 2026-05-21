@@ -58,6 +58,15 @@ log "Phase 1: Hardware detection and mirror optimization..."
 GPU_TYPE=$(lspci | grep -E "VGA|3D|Display" || true)
 log "Detected GPU: $GPU_TYPE"
 
+# Detect CPU for microcode
+UCODE_PKG=""
+if grep -q "GenuineIntel" /proc/cpuinfo; then
+    UCODE_PKG="intel-ucode"
+elif grep -q "AuthenticAMD" /proc/cpuinfo; then
+    UCODE_PKG="amd-ucode"
+fi
+[[ -n "$UCODE_PKG" ]] && log "Detected CPU: Installing $UCODE_PKG"
+
 log "Updating Arch Linux Keyring..."
 pacman -Sy --noconfirm archlinux-keyring || {
     warn "Keyring update failed. Re-initializing pacman-key..."
@@ -196,6 +205,7 @@ BASE_PKGS=(
     git neovim networkmanager sudo
     btrfs-progs
 )
+[[ -n "$UCODE_PKG" ]] && BASE_PKGS+=("$UCODE_PKG")
 pacstrap -K /mnt "${BASE_PKGS[@]}"
 
 log "Generating fstab..."
