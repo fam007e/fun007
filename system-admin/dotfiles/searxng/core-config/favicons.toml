@@ -1,0 +1,18 @@
+[favicons]
+# Version of the configuration schema.
+cfg_schema = 1
+
+[favicons.cache]
+# Type of database: "sqlite" (recommended)
+db_type = "sqlite"
+db_url = "/var/cache/searxng/faviconcache.db"
+
+[favicons.proxy]
+# HTTP Cache-Control max-age header for the client (in seconds)
+max_age = 5184000
+
+[favicons.proxy.resolver_map]
+"duckduckgo" = "searx.favicons.resolvers.duckduckgo"
+"google"     = "searx.favicons.resolvers.google"
+"yandex"     = "searx.favicons.resolvers.yandex"
+"allesedv"   = "searx.favicons.resolvers.allesedv"

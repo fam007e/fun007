@@ -1,0 +1,28 @@
+[botdetection]
+
+# Network prefix for grouping IPs
+ipv4_prefix = 32
+ipv6_prefix = 48
+
+# Trusted proxies (e.g. Nginx, local loopback)
+trusted_proxies = [
+  '127.0.0.0/8',
+  '::1',
+]
+
+[botdetection.ip_limit]
+# By default, link-local addresses are not monitored by the ip_limit
+filter_link_local = false
+
+# Activate link_token method (requires browser to load a CSS token)
+link_token = true
+
+[botdetection.ip_lists]
+# IPs in pass_ip bypass all rate limits.
+pass_ip = []
+
+# IPs that are always blocked.
+block_ip = []
+
+# Automatically trust SearXNG organization IPs.
+pass_searxng_org = true

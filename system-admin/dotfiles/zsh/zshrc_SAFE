@@ -146,6 +146,8 @@ alias da='date "+%Y-%m-%d %A %T %Z"'
 alias genSRCINFO='makepkg --printsrcinfo > .SRCINFO'
 alias kc='khal calendar'
 alias yayf="yay -Slq | fzf --multi --preview 'yay -Sii {1}' --preview-window=down:75% | xargs -ro yay -S"
+alias gtc="ghostty +new-window --working-directory=$PWD || ghostty --working-directory=$PWD"
+alias gtt="ghostty +new-window || ghostty"
 alias ala="alacritty msg create-window || alacritty"
 
 # Passwd Generator
@@ -189,7 +191,7 @@ passwdGEN() {
     fi
 
     # Run the password generator and extract the password
-    python3 $HOME/Github/fun007/security/password-gen/passwd_gen.py $case_variance $numbers $special "$length" | grep "Generated Password:" | awk '{for(i=3;i<=NF;i++)printf "%s", $i}' | tee >(pbcopy)
+    python3 $HOME/dev/fun007/security/password-gen/passwd_gen.py $case_variance $numbers $special "$length" | grep "Generated Password:" | awk '{for(i=3;i<=NF;i++)printf "%s", $i}' | tee >(pbcopy)
     echo  # Add newline after password
 }
 
@@ -432,9 +434,6 @@ alias logs="sudo find /var/log -type f -exec file {} \; | grep 'text' | cut -d' 
 alias sha1='openssl sha1'
 
 alias clickpaste='sleep 3; xdotool type "$(xclip -o -selection clipboard)"'
-
-# KITTY - alias to be able to use kitty features when connecting to remote servers(e.g use tmux on remote server)
-alias kssh="kitty +kitten ssh"
 
 # QP var chooser
 filter_papers() {
@@ -684,65 +683,84 @@ dwn_iso() {
     local iso_dir="$HOME/Downloads/ISO"
     mkdir -p "$iso_dir"
 
-    # Arch Linux URLs (primary and fallback)
+    # Arch Linux URLs
     local arch_url_base1="https://mirror.rackspace.com/archlinux/iso/latest/"
     local arch_url_base2="https://geo.mirror.pkgbuild.com/iso/latest/"
 
-    # Tails base URL
+    # Tails
     local tails_url_base="https://mirrors.edge.kernel.org/tails/stable/"
 
-    # Function to download Arch Linux ISO
+    # ==================== ARCH LINUX ====================
     download_arch_iso() {
         local arch_latest_ver=$(curl -sL "${arch_url_base1}" | grep -oP 'archlinux-\K[0-9]{4}\.[0-9]{2}\.[0-9]{2}' | head -n 1)
         local iso_filename="archlinux-${arch_latest_ver}-x86_64.iso"
 
-        # Check if the ISO already exists
         if [ -f "$iso_dir/$iso_filename" ]; then
             echo "Arch ISO is already the latest version: $iso_filename"
-        else
-            # Download from primary and fallback if necessary
-            if ! curl -o "$iso_dir/$iso_filename" "${arch_url_base1}${iso_filename}"; then
-                echo "Primary Arch URL failed, attempting fallback..."
-                curl -o "$iso_dir/$iso_filename" "${arch_url_base2}${iso_filename}"
-            fi
-
-            # Download the verification files
-            curl -o "$iso_dir/sha256sums.txt" "${arch_url_base1}sha256sums.txt" || curl -o "$iso_dir/sha256sums.txt" "${arch_url_base2}sha256sums.txt"
-            curl -o "$iso_dir/b2sums.txt" "${arch_url_base1}b2sums.txt" || curl -o "$iso_dir/b2sums.txt" "${arch_url_base2}b2sums.txt"
-            curl -o "$iso_dir/${iso_filename}.sig" "${arch_url_base1}${iso_filename}.sig" || curl -o "$iso_dir/${iso_filename}.sig" "${arch_url_base2}${iso_filename}.sig"
-
-            # Download and import Arch Linux signing keys if needed
-            if ! gpg --list-keys 76A5EF9054449A5C &>/dev/null; then
-                echo "Downloading Arch Linux signing key..."
-                gpg --auto-key-locate clear,wkd -v --locate-external-key pierre@archlinux.org
-            fi
-
-            # Run ISO verification script
-            sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
+            return 0
         fi
+
+        echo "Downloading latest Arch Linux ISO: $iso_filename"
+
+        if ! curl -L --progress-bar -o "$iso_dir/$iso_filename" "${arch_url_base1}${iso_filename}"; then
+            echo "Primary mirror failed, trying fallback..."
+            curl -L --progress-bar -o "$iso_dir/$iso_filename" "${arch_url_base2}${iso_filename}"
+        fi
+
+        curl -L -o "$iso_dir/sha256sums.txt" "${arch_url_base1}sha256sums.txt" || true
+        curl -L -o "$iso_dir/b2sums.txt" "${arch_url_base1}b2sums.txt" || true
+        curl -L -o "$iso_dir/${iso_filename}.sig" "${arch_url_base1}${iso_filename}.sig" || true
+
+        if ! gpg --list-keys 76A5EF9054449A5C &>/dev/null; then
+            gpg --auto-key-locate clear,wkd -v --locate-external-key pierre@archlinux.org
+        fi
+
+        sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
     }
 
-    # Function to download Tails ISO
+    # ==================== TAILS ====================
     download_tails_iso() {
-        local tails_latest_ver=$(curl -sL "${tails_url_base}" | grep -oP 'tails-amd64-\K[0-9]+\.[0-9]+(?=/)' | sort -V | tail -n 1)
-        local iso_filename="tails-amd64-${tails_latest_ver}.iso"
+        echo "Fetching latest Tails version..."
 
-        # Check if the ISO already exists
+        local tails_latest_ver=$(curl -sL "${tails_url_base}" | \
+            grep -oP 'tails-amd64-\K[0-9]+\.[0-9]+\.[0-9]+(?=/)' | sort -V | tail -n 1)
+
+        if [ -z "$tails_latest_ver" ]; then
+            tails_latest_ver=$(curl -sL "${tails_url_base}" | \
+                grep -oP 'href="tails-amd64-\K[0-9.]+(?=/)' | sort -V | tail -n 1)
+        fi
+
+        if [ -z "$tails_latest_ver" ]; then
+            echo "❌ Could not detect Tails version."
+            return 1
+        fi
+
+        local iso_filename="tails-amd64-${tails_latest_ver}.iso"
+        local version_dir="${tails_url_base}tails-amd64-${tails_latest_ver}/"
+
+        echo "Latest Tails version detected: ${tails_latest_ver}"
+
         if [ -f "$iso_dir/$iso_filename" ]; then
             echo "Tails ISO is already the latest version: $iso_filename"
-        else
-            # Download the ISO and .sig file
-            curl -o "$iso_dir/$iso_filename" "${tails_url_base}tails-amd64-${tails_latest_ver}/$iso_filename"
-            curl -o "$iso_dir/$iso_filename.sig" "${tails_url_base}tails-amd64-${tails_latest_ver}/$iso_filename.sig"
-
-            # Run ISO verification script (only GPG signature)
-            sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
+            return 0
         fi
+
+        echo "Downloading Tails ISO: $iso_filename"
+
+        curl -L --progress-bar -o "$iso_dir/$iso_filename" "${version_dir}${iso_filename}"
+        curl -L --progress-bar -o "$iso_dir/$iso_filename.sig" "${version_dir}${iso_filename}.sig"
+
+        # Tails signing key
+        if ! gpg --list-keys DBB802B258ACD84F &>/dev/null 2>/dev/null; then
+            echo "Downloading Tails signing key..."
+            curl -L -o "$iso_dir/tails-signing.key" "https://tails.net/tails-signing.key"
+            gpg --import "$iso_dir/tails-signing.key"
+        fi
+
+        sh "$iso_dir/iso_verifier.sh" "$iso_dir/$iso_filename"
     }
 
-    # Main logic
     echo "Checking for new Arch and Tails ISO versions..."
-
     download_arch_iso
     download_tails_iso
 }
@@ -922,7 +940,7 @@ _anime_seasonal_interface() {
 _anime_fansub_interface() {
     clear
     echo "════════════════════════════════════════════════════════════════"
-    echo "                    ⚙️  BROWSE BY FANSUB                        "
+    echo "                    ⚙️ BROWSE BY FANSUB                        "
     echo "════════════════════════════════════════════════════════════════"
     echo ""
 
@@ -1358,190 +1376,6 @@ Requirements:
 EOF
 }
 
-# Enhanced TorrentBD function with multiple download support
-torrentbd_news() {
-  local rss_url="<INSERT RSS FEED URL HERE>"
-  local temp_file=$(mktemp)
-  local details_dir=$(mktemp -d)
-  local download_dir="$HOME/Videos"
-
-  # Make sure download directory exists
-  mkdir -p "$download_dir"
-
-  # Fetch RSS feed
-  echo "Fetching latest torrents from TorrentBD..."
-  curl -s "$rss_url" > "$temp_file"
-
-  if [[ $? -ne 0 ]]; then
-    echo "Failed to fetch RSS feed. Check your internet connection."
-    rm -f "$temp_file"
-    rmdir "$details_dir" 2>/dev/null
-    return 1
-  fi
-
-  # Process and extract data from RSS (same as before)
-  local count=1
-  local display_list="${details_dir}/display.txt"
-  touch "$display_list"
-
-  grep -A20 "<item>" "$temp_file" | tr -d '\n' | sed 's/<item>/\n<item>/g' | grep "<item>" | while read -r item; do
-    local title=$(echo "$item" | grep -o '<title>.*</title>' | sed 's/<title>\(.*\)<\/title>/\1/' | sed 's/&amp;/\&/g' | sed 's/&#039;/'"'"'/g')
-    [[ "$title" == "TorrentBD" ]] && continue
-
-    local link=$(echo "$item" | grep -o '<link>.*</link>' | sed 's/<link>\(.*\)<\/link>/\1/' | sed 's/&amp;/\&/g')
-    local category=$(echo "$item" | grep -o '<category>.*</category>' | sed 's/<category>\(.*\)<\/category>/\1/' | sed 's/^ *//' | sed 's/ *$//')
-    local description=$(echo "$item" | grep -o '<description>.*</description>' | sed 's/<description>\(.*\)<\/description>/\1/')
-    local pubdate=$(echo "$item" | grep -o '<pubDate>.*</pubDate>' | sed 's/<pubDate>\(.*\)<\/pubDate>/\1/')
-    local date=$(echo "$pubdate" | awk '{print $1, $2, $3, $4}' | sed 's/,//g')
-    local size=$(echo "$description" | grep -o 'Size: [^ ]* [^ ]*' | sed 's/Size: //')
-    [[ -z "$size" ]] && size="N/A"
-    local seeders=$(echo "$description" | grep -o 'Seeders: [0-9]*' | sed 's/Seeders: //')
-    [[ -z "$seeders" ]] && seeders="0"
-    local leechers=$(echo "$description" | grep -o 'Leechers: [0-9]*' | sed 's/Leechers: //')
-    [[ -z "$leechers" ]] && leechers="0"
-
-    local simple_title=$(echo "$title" | sed -E 's/([0-9]{3,4}p|WEB-DL|BluRay|WEBRip|x264|x265|AAC|DD|AC3|DDP|DTS|HEVC|REMUX|HDR|SDR|REMASTERED|AV1|10bit|AMZN|DSNP|NF|HULU|IMAX|DUBBED|DUAL|PROPER|REPACK|EXTENDED|UNCUT|UNRATED|CRITERION|FLAC).*//')
-    if [[ "$simple_title" == *"S0"* && "$simple_title" == *"E0"* ]]; then
-      simple_title=$(echo "$simple_title" | sed -E 's/(S[0-9]+E[0-9]+).*/\1/')
-    fi
-    simple_title=$(echo "$simple_title" | sed 's/ *$//')
-
-    echo "$title" > "${details_dir}/${count}.title"
-    echo "$category" > "${details_dir}/${count}.category"
-    echo "$size" > "${details_dir}/${count}.size"
-    echo "$seeders" > "${details_dir}/${count}.seeders"
-    echo "$leechers" > "${details_dir}/${count}.leechers"
-    echo "$date" > "${details_dir}/${count}.date"
-    echo "$link" > "${details_dir}/${count}.link"
-
-    printf "%-3s %s\n" "${count}." "${simple_title}" >> "$display_list"
-    ((count++))
-  done
-
-  if [[ ! -s "$display_list" ]]; then
-    echo "No torrents found in the RSS feed."
-    rm -f "$temp_file"
-    rm -rf "$details_dir"
-    return 0
-  fi
-
-  # Create enhanced preview script
-  cat > "${details_dir}/preview.sh" << 'EOF'
-#!/bin/bash
-line="$1"
-details_dir="$2"
-
-idx=$(echo "$line" | awk '{print $1}' | sed 's/\.//')
-
-if [[ -f "${details_dir}/${idx}.title" ]]; then
-  title=$(cat "${details_dir}/${idx}.title")
-  category=$(cat "${details_dir}/${idx}.category")
-  size=$(cat "${details_dir}/${idx}.size")
-  seeders=$(cat "${details_dir}/${idx}.seeders")
-  leechers=$(cat "${details_dir}/${idx}.leechers")
-  date=$(cat "${details_dir}/${idx}.date")
-
-  echo -e "\033[1;36m=== TORRENT DETAILS ===\033[0m"
-  echo -e "\033[1;33mTitle:\033[0m $title"
-  echo -e "\033[1;33mCategory:\033[0m $category"
-  echo -e "\033[1;33mSize:\033[0m $size"
-  echo -e "\033[1;33mSeeders:\033[0m $seeders"
-  echo -e "\033[1;33mLeechers:\033[0m $leechers"
-  echo -e "\033[1;33mDate:\033[0m $date"
-  echo ""
-  echo -e "\033[1;32m▶ Press Enter to download\033[0m"
-  echo -e "\033[1;34m▶ Press Ctrl+C to go back\033[0m"
-else
-  echo -e "\033[1;31mDetails not found for item $idx\033[0m"
-fi
-EOF
-  chmod +x "${details_dir}/preview.sh"
-
-  # Main download loop
-  while true; do
-    local fzf_header="TorrentBD - Enter: Download | Tab: Multi-select | Esc: Quit | Ctrl+R: Refresh"
-    local selected_lines=$(cat "$display_list" | \
-      fzf --height=80% \
-          --layout=reverse \
-          --border=rounded \
-          --header="$fzf_header" \
-          --preview="${details_dir}/preview.sh {} ${details_dir}" \
-          --preview-window=right:50%:wrap \
-          --prompt="Select torrent(s) > " \
-          --pointer="▶" \
-          --marker="✓" \
-          --multi \
-          --bind='ctrl-r:reload(cat '"$display_list"')')
-
-    # If user cancelled selection
-    if [[ -z "$selected_lines" ]]; then
-      echo "Exiting TorrentBD..."
-      break
-    fi
-
-    # Process each selected torrent
-    local download_count=0
-    while IFS= read -r selected_line; do
-      [[ -z "$selected_line" ]] && continue
-
-      local choice=$(echo "$selected_line" | awk '{print $1}' | sed 's/\.//')
-
-      if [[ -f "${details_dir}/${choice}.title" && -f "${details_dir}/${choice}.link" ]]; then
-        local title=$(cat "${details_dir}/${choice}.title")
-        local link=$(cat "${details_dir}/${choice}.link")
-        local safe_title=$(echo "$title" | sed 's/[<>:"|?*]/_/g')
-        local torrent_filename="${download_dir}/${safe_title// /_}.torrent"
-
-        echo "[$((download_count + 1))] Downloading: $title"
-        curl -s -L "$link" -o "$torrent_filename"
-
-        if [[ $? -eq 0 ]]; then
-          echo "✓ Saved: $(basename "$torrent_filename")"
-          ((download_count++))
-        else
-          echo "✗ Failed to download: $title"
-        fi
-      fi
-    done <<< "$selected_lines"
-
-    if [[ $download_count -gt 0 ]]; then
-      echo ""
-      echo "Downloaded $download_count torrent file(s) to: $download_dir"
-
-      # Ask if user wants to open qBittorrent - FIXED VERSION
-      echo ""
-      printf "Open qBittorrent now? (y/N): "
-      read -r qbt_reply < /dev/tty
-      if [[ "$qbt_reply" =~ ^[Yy]$ ]]; then
-        if command -v qbittorrent >/dev/null 2>&1; then
-          echo "Opening qBittorrent..."
-          qbittorrent >/dev/null 2>&1 &
-          disown
-        else
-          echo "qBittorrent not found. Please install it or manually open the torrent files."
-        fi
-      fi
-    fi
-
-    # Ask if user wants to continue - FIXED VERSION
-    echo ""
-    printf "Download more torrents? (Y/n): "
-    read -r continue_reply < /dev/tty
-    if [[ "$continue_reply" =~ ^[Nn]$ ]]; then
-      break
-    fi
-  done
-
-  # Clean up
-  rm -f "$temp_file"
-  rm -rf "$details_dir"
-  echo "Session ended. Happy downloading! 🏴‍☠️"
-}
-
-alias tbd="torrentbd_news"
-
-
-
 # --- Path Configuration ---
 export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
 export ANDROID_HOME=$HOME/Android/Sdk
@@ -1574,7 +1408,7 @@ export VISUAL=nvim
 if [ -f /usr/bin/fastfetch ]; then
     fastfetch
 fi
-eval "$(oh-my-posh init zsh --config $HOME/Github/fun007/system-admin/dotfiles/illusi0n_mod.omp.json)"
+eval "$(oh-my-posh init zsh --config $HOME/dev/fun007/system-admin/dotfiles/illusi0n_mod.omp.json)"
 [ -f /opt/miniconda3/etc/profile.d/conda.sh ] && source /opt/miniconda3/etc/profile.d/conda.sh
 
 . "$HOME/.local/bin/env"
