@@ -9,4 +9,4 @@ configuration {
     drun-show-actions:  false;
     drun-match-fields:  "name,generic,exec,categories";
 }
-@theme "/home/fam007e/.config/rofi/themes/roundednord.rasi"
+@theme "$HOME/.config/rofi/themes/roundednord.rasi"
