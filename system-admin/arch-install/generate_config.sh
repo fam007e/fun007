@@ -137,6 +137,18 @@ else
     log "No additional drives detected."
 fi
 
+# --- 7. Secure Wipe ---
+echo ""
+echo "Secure wipe (urandom overwrite) before formatting:"
+echo "  Applies to: installation disk + media drive (if configured)"
+echo "  SSD note: urandom wipe is slow and doesn't guarantee full coverage due"
+echo "  to wear leveling — use LUKS instead for SSD security."
+echo "  HDD: urandom is effective but slow (~100 MB/s, ~50 min per 300 GiB)."
+echo ""
+read -rp "Enable secure wipe? [y/N]: " wipe_input < /dev/tty
+[[ "$wipe_input" =~ ^[Yy]$ ]] && wipe_disk="true" || wipe_disk="false"
+log "Secure wipe: $wipe_disk"
+
 # --- Generate JSON ---
 python -c "
 import json, sys
@@ -152,13 +164,14 @@ data = {
     'kernel':       sys.argv[8],
     'swap_size':    int(sys.argv[9]),
     'media_drive':  sys.argv[10],
+    'wipe_disk':    sys.argv[11],
 }
 
 with open('config.json', 'w') as f:
     json.dump(data, f, indent=4)
 " "$username" "$password" "$hostname" "$timezone" \
   "$disk" "$filesystem" "$luks_password" "$kernel" \
-  "$swap_size" "$media_drive"
+  "$swap_size" "$media_drive" "$wipe_disk"
 
 # Restrict config.json permissions — it contains plaintext passwords.
 chmod 600 config.json

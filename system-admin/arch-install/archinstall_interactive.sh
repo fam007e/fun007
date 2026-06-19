@@ -43,6 +43,7 @@ DISK=$(get_config "disk")
 LUKS_PASSWORD=$(get_config "luks_password")
 KERNEL=$(get_config "kernel")
 MEDIA_DRIVE=$(get_config "media_drive")
+WIPE_DISK=$(get_config "wipe_disk")   # "true" = urandom wipe before formatting
 
 SWAP_SIZE_GiB=$(get_config "swap_size")
 [[ -z "$SWAP_SIZE_GiB" || "$SWAP_SIZE_GiB" == "null" ]] && SWAP_SIZE_GiB=8
@@ -92,6 +93,40 @@ fi
 # Phase 2: Disk Partitioning & Formatting
 # =============================================================================
 log "Phase 2: Preparing storage on $DISK..."
+
+# Wipe helper — wipefs + zero ends + optional urandom pass
+# Usage: sanitize_drive <device> <do_urandom: true|false>
+sanitize_drive() {
+    local DEV="$1"
+    local DO_URANDOM="$2"
+
+    log "Wiping all signatures on $DEV (wipefs)..."
+    wipefs -a --force "$DEV"
+
+    local SIZE_SECTORS
+    SIZE_SECTORS=$(blockdev --getsz "$DEV")
+
+    log "Zeroing first and last 10 MiB of $DEV..."
+    dd if=/dev/zero of="$DEV" bs=1M count=10 conv=fsync status=none
+    dd if=/dev/zero of="$DEV" bs=1M count=10 \
+        seek=$(( SIZE_SECTORS / 2048 - 10 )) conv=fsync status=none
+
+    if [[ "$DO_URANDOM" == "true" ]]; then
+        log "Filling $DEV with urandom (slow on large drives — be patient)..."
+        dd if=/dev/urandom of="$DEV" bs=4M conv=fsync status=progress || true
+
+        log "Re-zeroing first and last 10 MiB after urandom pass..."
+        dd if=/dev/zero of="$DEV" bs=1M count=10 conv=fsync status=none
+        dd if=/dev/zero of="$DEV" bs=1M count=10 \
+            seek=$(( SIZE_SECTORS / 2048 - 10 )) conv=fsync status=none
+    fi
+
+    blockdev --flushbufs "$DEV"
+    udevadm settle
+}
+
+# Sanitize main disk
+sanitize_drive "$DISK" "$([[ "$WIPE_DISK" == "true" ]] && echo true || echo false)"
 
 sgdisk -Z "$DISK"
 sgdisk -a 2048 -o "$DISK"
@@ -152,7 +187,7 @@ log "Creating ${SWAP_SIZE_GiB}GiB swapfile (dd, not fallocate — BTRFS requirem
 dd if=/dev/zero of=/mnt/swap/swapfile bs=1M count=$((SWAP_SIZE_GiB * 1024)) status=progress
 chmod 600 /mnt/swap/swapfile
 mkswap /mnt/swap/swapfile
-log "Swapfile: $(ls -lh /mnt/swap/swapfile | awk '{print $5}')"
+log "Swapfile: $(du -sh /mnt/swap/swapfile | cut -f1)"
 
 # =============================================================================
 # Phase 2b: Optional Secondary Media Drive
@@ -165,8 +200,24 @@ if [[ -n "$MEDIA_DRIVE" && "$MEDIA_DRIVE" != "null" && -b "$MEDIA_DRIVE" ]]; the
     MEDIA_OPTS="noatime,compress=zstd:1,space_cache=v2"
     [[ "$MEDIA_ROTATIONAL" == "0" ]] && MEDIA_OPTS="${MEDIA_OPTS},discard=async"
 
+    # Sanitize media drive — always wipefs+zero; urandom only if wipe_disk=true
+    sanitize_drive "$MEDIA_DRIVE" "$([[ "$WIPE_DISK" == "true" ]] && echo true || echo false)"
+
+    # Confirm blkid sees nothing before formatting
+    STALE_SIG=$(blkid "$MEDIA_DRIVE" 2>/dev/null || true)
+    [[ -n "$STALE_SIG" ]] && error "Stale signatures still on $MEDIA_DRIVE after wipe: $STALE_SIG"
+    log "Drive clean — no signatures detected."
+
     log "Formatting $MEDIA_DRIVE as BTRFS (label: MEDIA)..."
     mkfs.btrfs -L "MEDIA" "$MEDIA_DRIVE" -f
+
+    # Flush and settle so the new UUID is stable before genfstab reads it
+    blockdev --flushbufs "$MEDIA_DRIVE"
+    udevadm settle
+
+    MEDIA_UUID=$(blkid -s UUID -o value "$MEDIA_DRIVE")
+    [[ -z "$MEDIA_UUID" ]] && error "Failed to read UUID from $MEDIA_DRIVE after mkfs.btrfs"
+    log "Media drive UUID: $MEDIA_UUID"
 
     log "Creating media subvolumes..."
     mkdir -p /mnt/tmp_media_setup
@@ -179,15 +230,15 @@ if [[ -n "$MEDIA_DRIVE" && "$MEDIA_DRIVE" != "null" && -b "$MEDIA_DRIVE" ]]; the
     rmdir  /mnt/tmp_media_setup
 
     log "Mounting media subvolumes under /home/$USERNAME/..."
-    mkdir -p /mnt/home/$USERNAME/{Videos,Downloads,Music,Pictures}
+    mkdir -p /mnt/home/"$USERNAME"/{Videos,Downloads,Music,Pictures}
 
-    mount -o "${MEDIA_OPTS},subvol=@Videos"    "$MEDIA_DRIVE" /mnt/home/$USERNAME/Videos
-    mount -o "${MEDIA_OPTS},subvol=@Downloads" "$MEDIA_DRIVE" /mnt/home/$USERNAME/Downloads
-    mount -o "${MEDIA_OPTS},subvol=@Music"     "$MEDIA_DRIVE" /mnt/home/$USERNAME/Music
-    mount -o "${MEDIA_OPTS},subvol=@Pictures"  "$MEDIA_DRIVE" /mnt/home/$USERNAME/Pictures
+    mount -o "${MEDIA_OPTS},subvol=@Videos"    "$MEDIA_DRIVE" /mnt/home/"$USERNAME"/Videos
+    mount -o "${MEDIA_OPTS},subvol=@Downloads" "$MEDIA_DRIVE" /mnt/home/"$USERNAME"/Downloads
+    mount -o "${MEDIA_OPTS},subvol=@Music"     "$MEDIA_DRIVE" /mnt/home/"$USERNAME"/Music
+    mount -o "${MEDIA_OPTS},subvol=@Pictures"  "$MEDIA_DRIVE" /mnt/home/"$USERNAME"/Pictures
 
     # UID 1000 = first non-root user (what useradd will assign)
-    chown 1000:1000 /mnt/home/$USERNAME/{Videos,Downloads,Music,Pictures}
+    chown 1000:1000 /mnt/home/"$USERNAME"/{Videos,Downloads,Music,Pictures}
     log "Media drive mounted. genfstab will capture these mounts automatically."
 else
     if [[ -n "$MEDIA_DRIVE" && "$MEDIA_DRIVE" != "null" ]]; then
@@ -209,13 +260,15 @@ BASE_PKGS=(
 pacstrap -K /mnt "${BASE_PKGS[@]}"
 
 log "Generating fstab..."
-genfstab -U /mnt >> /mnt/etc/fstab
 # genfstab picks up all mounted filesystems by UUID, including the media drive
 # subvolumes (if configured) and the @swap subvolume.
 # Append the swapfile entry manually — genfstab only detects active swap,
 # and we intentionally do not activate swap during install.
-echo "# BTRFS swapfile (no-COW @swap subvolume)" >> /mnt/etc/fstab
-echo "/swap/swapfile none swap defaults 0 0"      >> /mnt/etc/fstab
+{
+    genfstab -U /mnt
+    echo "# BTRFS swapfile (no-COW @swap subvolume)"
+    echo "/swap/swapfile none swap defaults 0 0"
+} >> /mnt/etc/fstab
 
 # =============================================================================
 # Phase 4: Chroot Configuration
