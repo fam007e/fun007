@@ -765,6 +765,30 @@ dwn_iso() {
     download_tails_iso
 }
 
+# Flash ISO to drive
+flashiso() {
+    if [[ $# -ne 2 ]]; then
+        echo "Usage: flashiso <image.iso> <device>"
+        echo "Example: flashiso archlinux.iso /dev/sdb"
+        return 1
+    fi
+
+    local iso="$1"
+    local dev="$2"
+
+    [[ ! -f "$iso" ]] && echo "Error: ISO not found: $iso" && return 1
+    [[ ! -b "$dev" ]] && echo "Error: Not a block device: $dev" && return 1
+
+    echo "ISO: $iso"
+    echo "Device: $dev"
+    lsblk "$dev"
+    echo "\nThis will DESTROY all data on $dev. Continue? [y/N]"
+    read -r confirm
+    [[ "$confirm" != "y" && "$confirm" != "Y" ]] && echo "Aborted." && return 1
+
+    sudo dd if="$iso" of="$dev" bs=4M status=progress oflag=sync && sync
+}
+
 # FZF-based Anime Torrent Manager for .zshrc
 # Download directory path - centralized for easy updating
 ANIME_DOWNLOAD_DIR="$HOME/Videos"
@@ -1408,7 +1432,12 @@ export VISUAL=nvim
 if [ -f /usr/bin/fastfetch ]; then
     fastfetch
 fi
+
 eval "$(oh-my-posh init zsh --config $HOME/dev/fun007/system-admin/dotfiles/illusi0n_mod.omp.json)"
 [ -f /opt/miniconda3/etc/profile.d/conda.sh ] && source /opt/miniconda3/etc/profile.d/conda.sh
 
 . "$HOME/.local/bin/env"
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/fam007e/.local/bin:$PATH"

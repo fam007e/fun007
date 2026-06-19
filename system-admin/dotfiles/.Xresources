@@ -1,0 +1,64 @@
+! ====================== Nordic Theme + Your Settings ======================
+
+! Cursor theme 
+Xcursor.theme: Nordzy-cursors
+
+! ====================== Colors (Nordic) ======================
+
+! Base colors
+*background:    #2e3440
+*foreground:    #d8dee9
+*cursorColor:   #88c0d0
+
+! Normal 16 colors
+*color0:        #3b4252
+*color1:        #bf616a
+*color2:        #a3be8c
+*color3:        #ebcb8b
+*color4:        #81a1c1
+*color5:        #b48ead
+*color6:        #88c0d0
+*color7:        #e5e9f0
+
+! Bright colors
+*color8:        #4c566a
+*color9:        #bf616a
+*color10:       #a3be8c
+*color11:       #ebcb8b
+*color12:       #81a1c1
+*color13:       #b48ead
+*color14:       #8fbcbb
+*color15:       #eceff4
+
+! ====================== Font & Appearance ======================
+
+xterm*faceName: FiraCode Nerd Font Mono
+xterm*faceSize: 12
+xterm*font:     -*-FiraCode Nerd Font Mono-*-r-*-*-*-120-*-*-*-*-*-*
+
+! Window padding & size 
+xterm*maximized:      true
+xterm*internalBorder: 0 
+xterm*geometry:       160x50
+
+! Scrolling
+xterm*scrollBar:      false
+!xterm*saveLines:      2000
+!xterm*scrollBar:      true
+!xterm*scrollBarRight: true
+
+! Cursor
+xterm*cursorBlink:    true
+xterm*cursorStyle:    block
+
+! Better rendering
+xterm*renderFont:               true
+xterm*faceNameDoublesWidth:     true
+xterm*utf8:                     true
+xterm*locale:                   true
+xterm*allowBoldFonts:           true
+
+! Misc
+xterm*visualBell:       true
+xterm*bellSuppressTime: 0
+xterm*pointerColor:     #88c0d0
