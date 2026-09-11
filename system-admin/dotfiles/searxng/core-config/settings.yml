@@ -95,14 +95,13 @@ default_doi_resolver: 'oadoi.org'
 engines:
   # --- Independent Power (The Pillars) ---
   - name: mojeek
-    engine: seznam # Mojeek engine module is often named seznam or uses xpath in some versions, 
-    # but based on your file list, 'mojeek.py' exists.
     engine: mojeek
     shortcut: mj
 
   - name: seznam
     engine: seznam
     shortcut: sz
+    disabled: true    # Always times out — Czech-only engine, re-enable if needed
 
   - name: qwant
     engine: qwant
@@ -121,10 +120,12 @@ engines:
   - name: wikidata
     engine: wikidata
     shortcut: wd
+    timeout: 12.0     # wikidata is slow — give it more headroom
 
   - name: wolframalpha
     engine: wolframalpha_noapi
     shortcut: wa
+    disabled: true    # Consistently times out without API key
 
   # --- Major Backups ---
   - name: google

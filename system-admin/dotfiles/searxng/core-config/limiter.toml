@@ -4,10 +4,11 @@
 ipv4_prefix = 32
 ipv6_prefix = 48
 
-# Trusted proxies (e.g. Nginx, local loopback)
+# Trusted proxies (e.g. Nginx, local loopback, Docker bridge)
 trusted_proxies = [
   '127.0.0.0/8',
   '::1',
+  '172.16.0.0/12',
 ]
 
 [botdetection.ip_limit]
@@ -18,8 +19,10 @@ filter_link_local = false
 link_token = true
 
 [botdetection.ip_lists]
-# IPs in pass_ip bypass all rate limits.
-pass_ip = []
+# IPs in pass_ip bypass all rate limits (Docker host gateway).
+pass_ip = [
+  '172.16.0.0/12',
+]
 
 # IPs that are always blocked.
 block_ip = []
