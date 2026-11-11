@@ -1,0 +1,246 @@
+#!/usr/bin/env bash
+# kernel-update: pull, build, install and clean up a custom mainline kernel
+# on Arch Linux with GRUB (UEFI), a FAT /boot, btrfs and Timeshift.
+#
+# Usage: kernel-update [options]
+#   --no-pull       build the tree as it is, skip git pull
+#   --build-only    pull and build, then stop (tree is kept for --install-only)
+#   --install-only  install the tree already built by --build-only
+#   --fresh-config  discard the saved config, restart from /proc/config.gz
+#   --keep-tree     skip the final cleanup of the build tree
+#   --sync-boot     after a Timeshift rollback: rebuild the /boot files from the
+#                   newest custom kernel stored under /usr/lib/modules
+#
+# Environment overrides:
+#   KDIR=~/Github/linux   kernel source tree
+#   SUFFIX=-custom        LOCALVERSION suffix
+#   KEEP_BTF=1            0 drops debug info/BTF (smaller, faster build, but
+#                         breaks systemd's bpf-restrict-fs and sched_ext)
+#   MIN_FREE_GB=15        refuse to build with less free space than this
+#
+# The source tree is NOT wiped after a run. /lib/modules/<release>/build is a
+# symlink to it, and tools such as bcc (Proton VPN daemon) and DKMS need its
+# generated headers. The end of the run leaves the tree in "modules_prepared"
+# state instead of running mrproper.
+
+set -Eeuo pipefail
+
+KDIR="${KDIR:-$HOME/Github/linux}"
+SUFFIX="${SUFFIX:--custom}"
+NAME="linux-custom"                       # /boot/vmlinuz-$NAME, never touches stock files
+KEEP_BTF="${KEEP_BTF:-1}"
+MIN_FREE_GB="${MIN_FREE_GB:-15}"
+STATE="$HOME/.config/kernel-build"        # lives in /home, so Timeshift rollbacks don't touch it
+BASECFG="$STATE/config"
+LOGDIR="$HOME/.cache/kernel-build"
+
+PULL=1 BUILD=1 INSTALL=1 FRESH_CFG=0 KEEP_TREE=0 SYNC=0
+for arg in "$@"; do
+    case "$arg" in
+        --no-pull)      PULL=0 ;;
+        --build-only)   INSTALL=0 ;;
+        --install-only) PULL=0; BUILD=0 ;;
+        --fresh-config) FRESH_CFG=1 ;;
+        --keep-tree)    KEEP_TREE=1 ;;
+        --sync-boot)    SYNC=1 ;;
+        -h|--help)      sed -n '2,/^$/p' "$0"; exit 0 ;;
+        *) echo "unknown option: $arg" >&2; exit 1 ;;
+    esac
+done
+
+say() { printf '\n\033[1;34m==> %s\033[0m\n' "$*"; }
+die() { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
+need() { for c in "$@"; do command -v "$c" >/dev/null || die "missing tool: $c"; done; }
+
+KEEPALIVE=""
+STAGED=0                                  # 1 while hidden temp files exist in /boot
+cleanup() {
+    if (( STAGED )); then
+        sudo -n rm -f /boot/.new-vmlinuz /boot/.new-initramfs.img 2>/dev/null || true
+    fi
+    if [[ -n $KEEPALIVE ]]; then kill "$KEEPALIVE" 2>/dev/null || true; fi
+}
+trap cleanup EXIT
+
+sudo_keepalive() {
+    sudo -v
+    ( while true; do sudo -n true; sleep 50; kill -0 "$$" 2>/dev/null || exit; done ) &
+    KEEPALIVE=$!
+}
+
+# install_boot <release> <rotate>
+# Builds the initramfs, checks it, keeps the previous custom kernel as -prev
+# (when rotate=1), puts the new files in /boot and regenerates the GRUB config.
+install_boot() {
+    local rel=$1 rotate=$2 kimg="/usr/lib/modules/$1/vmlinuz" listing first
+    [[ -f $kimg ]] || die "no kernel image at $kimg"
+    findmnt -rn /boot >/dev/null || die "/boot is not mounted"
+    [[ -d /boot/grub ]] || die "/boot/grub not found"
+
+    say "Building initramfs for $rel"
+    STAGED=1
+    sudo cp -f "$kimg" /boot/.new-vmlinuz
+    sudo mkinitcpio -k "$rel" -g /boot/.new-initramfs.img
+    listing=$(lsinitcpio /boot/.new-initramfs.img)
+    if ! grep -q btrfs <<<"$listing" && ! grep -q btrfs "/usr/lib/modules/$rel/modules.builtin"; then
+        die "initramfs has no btrfs support; refusing to install"
+    fi
+
+    if (( rotate )) && [[ -f $STATE/installed_release \
+            && -f /boot/vmlinuz-$NAME && -f /boot/initramfs-$NAME.img ]] \
+            && [[ $(<"$STATE/installed_release") != "$rel" ]]; then
+        say "Keeping the previous custom kernel as -prev"
+        sudo cp -f "/boot/vmlinuz-$NAME" "/boot/vmlinuz-$NAME-prev"
+        sudo cp -f "/boot/initramfs-$NAME.img" "/boot/initramfs-$NAME-prev.img"
+        cp "$STATE/installed_release" "$STATE/prev_release"
+    fi
+    sudo mv -f /boot/.new-vmlinuz "/boot/vmlinuz-$NAME"
+    sudo mv -f /boot/.new-initramfs.img "/boot/initramfs-$NAME.img"
+    STAGED=0
+    echo "$rel" > "$STATE/installed_release"
+
+    say "Regenerating GRUB config"
+    sudo grub-mkconfig -o /boot/grub/grub.cfg
+    if ! grep -q "initramfs-$NAME.img" /boot/grub/grub.cfg; then
+        echo "warning: grub.cfg does not reference initramfs-$NAME.img, check the menu entry" >&2
+    fi
+    first=$(grep -m1 -E '^[[:space:]]*menuentry ' /boot/grub/grub.cfg || true)
+    if grep -q custom <<<"$first"; then
+        echo "note: the custom kernel is now the FIRST GRUB entry (GRUB_DEFAULT=0 boots it)"
+    fi
+}
+
+[[ $EUID -ne 0 ]] || die "run as your normal user; sudo is used where needed"
+[[ -n $SUFFIX ]]  || die "SUFFIX must not be empty (cleanup relies on it)"
+mkdir -p "$STATE" "$LOGDIR"
+need sudo grub-mkconfig mkinitcpio lsinitcpio
+
+# Rollback helper: after restoring a Timeshift snapshot, /boot may hold a kernel
+# whose modules are gone. Rebuild /boot from what the restored root really has.
+if (( SYNC )); then
+    sudo_keepalive
+    latest=$(ls -1d /usr/lib/modules/*"$SUFFIX"*/vmlinuz 2>/dev/null | sort -V | tail -n 1 || true)
+    [[ -n $latest ]] || die "no custom kernel with a vmlinuz found under /usr/lib/modules"
+    rel=$(basename "$(dirname "$latest")")
+    say "Syncing /boot to $rel"
+    install_boot "$rel" 0
+    say "Done. Reboot into the custom entry or stay on a stock kernel."
+    exit 0
+fi
+
+[[ -d $KDIR/.git ]] || die "$KDIR is not a git checkout"
+cd "$KDIR"
+
+if (( INSTALL )); then sudo_keepalive; fi
+
+if (( BUILD )); then
+    need make gcc bc pahole git zcat
+    avail=$(df --output=avail -BG "$KDIR" | tail -n 1 | tr -dc '0-9')
+    (( avail >= MIN_FREE_GB )) || die "only ${avail}G free, need at least ${MIN_FREE_GB}G"
+
+    if (( PULL )); then
+        say "Pulling latest source"
+        git pull --ff-only
+    fi
+
+    say "Cleaning tree and preparing config"
+    make mrproper
+    # A config saved without BTF has silently lost every option that needs it
+    # (sched_ext and others), so bring BTF back from a clean stock config.
+    if [[ $KEEP_BTF == 1 && -f $BASECFG ]] && ! grep -q '^CONFIG_DEBUG_INFO_BTF=y' "$BASECFG"; then
+        echo "saved config was made without BTF; starting again from the stock kernel config"
+        FRESH_CFG=1
+    fi
+    if [[ -f $BASECFG && $FRESH_CFG -eq 0 ]]; then
+        cp "$BASECFG" .config
+    else
+        [[ $(uname -r) != *"$SUFFIX"* ]] \
+            || die "you are running a custom kernel; boot a stock kernel first so its config is a clean base"
+        zcat /proc/config.gz > .config
+    fi
+    scripts/config --set-str LOCALVERSION "$SUFFIX"
+    if [[ $KEEP_BTF != 1 ]]; then
+        scripts/config --disable DEBUG_INFO_BTF \
+                       --disable DEBUG_INFO \
+                       --enable  DEBUG_INFO_NONE
+    else
+        scripts/config --disable DEBUG_INFO_NONE \
+                       --enable  DEBUG_INFO_DWARF_TOOLCHAIN_DEFAULT \
+                       --enable  DEBUG_INFO_BTF \
+                       --enable  SCHED_CLASS_EXT
+    fi
+    scripts/config --disable INTEL_TDX_HOST --enable BPF_LSM
+    make olddefconfig
+    cp .config "$BASECFG"
+
+    say "Building (log in $LOGDIR)"
+    log="$LOGDIR/build-$(date +%F-%H%M).log"
+    nice -n 10 make -j"$(nproc)" 2>&1 | tee "$log"
+fi
+
+[[ -f include/config/kernel.release ]] || die "no built tree here; run without --install-only"
+REL=$(<include/config/kernel.release)
+IMAGE=$(make -s image_name)
+[[ -f $IMAGE ]] || die "$IMAGE is missing; build first"
+say "Kernel $REL is built"
+
+if (( ! INSTALL )); then
+    say "--build-only: stopping before install. Run with --install-only to install."
+    exit 0
+fi
+
+say "Installing modules (stripped)"
+sudo make INSTALL_MOD_STRIP=1 modules_install
+# Keep a copy of the kernel next to its modules, like the Arch packages do, so a
+# Timeshift snapshot of / always holds a matching kernel + modules pair.
+sudo install -Dm644 "$IMAGE" "/usr/lib/modules/$REL/vmlinuz"
+install_boot "$REL" 1
+
+say "Removing old custom kernels"
+keep=("$REL" "$(uname -r)")
+if [[ -f $STATE/prev_release ]]; then keep+=("$(<"$STATE/prev_release")"); fi
+for d in /usr/lib/modules/*"$SUFFIX"*; do
+    [[ -d $d ]] || continue
+    v=${d##*/}
+    skip=0
+    for k in "${keep[@]}"; do [[ $v == "$k" ]] && skip=1; done
+    if (( ! skip )); then
+        echo "removing $d"
+        sudo rm -rf -- "$d"
+    fi
+done
+
+ls -1t "$LOGDIR"/build-*.log 2>/dev/null | tail -n +6 | xargs -r rm --
+
+if (( KEEP_TREE )); then
+    say "Keeping build tree as it is (--keep-tree)"
+else
+    # Not mrproper: /lib/modules/$REL/build points at this tree, and bcc/DKMS
+    # need .config, include/generated and include/config to compile against it.
+    # "clean" drops the objects; "modules_prepare" guarantees the headers exist.
+    # "make clean" also deletes Module.symvers (Makefile: clean rm-files), which
+    # DKMS/external modules need for CONFIG_MODVERSIONS, so save and restore it.
+    say "Cleaning build tree (keeping generated headers and Module.symvers for bcc/DKMS)"
+    symvers=""
+    if [[ -f Module.symvers ]]; then
+        symvers=$(mktemp)
+        cp -f Module.symvers "$symvers"
+    fi
+    make clean
+    make modules_prepare
+    if [[ -n $symvers ]]; then
+        cp -f "$symvers" Module.symvers
+        rm -f "$symvers"
+    fi
+    if [[ $(make -s kernelrelease) != "$REL" ]]; then
+        echo "warning: tree release $(make -s kernelrelease) differs from installed $REL;" >&2
+        echo "         headers under /lib/modules/$REL/build do not match the kernel" >&2
+    fi
+fi
+
+say "Done: $REL"
+du -sh "$KDIR" 2>/dev/null | sed 's/^/source tree size: /'
+sudo btrfs filesystem usage / | grep -E 'Free \(estimated\)' || true
+df -h /boot | sed 's/^/  /'
+echo "Reboot and choose the custom kernel in the GRUB menu (check Advanced options)."
+echo "Confirm afterwards with: uname -r"
