@@ -9,7 +9,7 @@ const archPhases = [
   {
     title: "Hardware Detection & Encryption",
     description: "Pre-flight checks followed by LUKS2 volume creation.",
-    details: ["TPM2/FIDO2 hardware verification", "BTRFS-on-LUKS performance tuning"]
+    details: ["Auto-detects CPU microcode & GPU drivers", "Interactive LUKS password (never logged), optional urandom pre-wipe"]
   },
   {
     title: "BTRFS Subvolume Architecture",
@@ -18,8 +18,8 @@ const archPhases = [
   },
   {
     title: "Base Bootstrap & Handover",
-    description: "System base installation followed by fun007 zsh integration.",
-    details: ["controllable swap sizing", "automated ecosystem handover"]
+    description: "System base installation followed by fun007 ecosystem handover.",
+    details: ["Clones fun007 to ~/Github/fun007", "zsh bootstrap + deploy_dotfiles.sh symlinks every config", "config.json (plaintext passwords) shredded on success"]
   }
 ];
 
@@ -43,6 +43,11 @@ const zshPhases = [
     title: "Version & Plugin Managers",
     description: "Deploying SDKMAN and Zinit for seamless workflow.",
     details: ["Zero-config plugin initialization"]
+  },
+  {
+    title: "Full Dotfiles Deployment",
+    description: "deploy_dotfiles.sh symlinks the entire config set into $HOME.",
+    details: ["Idempotent, backs up existing files, --dry-run support", "Seeds local.zsh (chmod 600) for secrets & per-machine overrides"]
   }
 ];
 
@@ -280,23 +285,25 @@ pkg install zsh curl git ...`}
                 <Zap className="text-cyan" />
                 <h4>Zsh & Shell Logic</h4>
               </div>
-              <p>Productivity-first shell with deep integration for torrents, security, and environment management.</p>
-              <CodeBlock 
-                filename="zshrc_SAFE"
+              <p>Modular shell: a thin ~/.zshrc loader sources ordered modules from ~/.config/zsh — env, plugins, aliases, functions, ISO verification, anime tooling, prompt. Secrets and per-machine overrides live in an untracked local.zsh.</p>
+              <CodeBlock
+                filename="~/.zshrc → ~/.config/zsh/*.zsh"
                 language="bash"
-                code={`# TorrentBD RSS news & download integration
-torrentbd_news() {
-  local rss_url="<INSERT RSS FEED URL HERE>"
-  # ... automated parsing and qBittorrent handover
-}
+                code={`# Order matters: env -> local -> plugins -> options -> aliases -> functions -> prompt.
+ZSH_MOD_DIR="\${ZSH_MOD_DIR:-\$HOME/.config/zsh}"
 
-# user-specific bins to path array
-path=(
-  "$GOBIN"
-  "$ANDROID_HOME/platform-tools"
-  "$path[@]"
-)`}
-                philosophy="By using the 'path' array instead of 'PATH' string, Zsh handles uniqueness and precedence automatically, preventing path pollution."
+_zsh_modules=(
+    env.zsh                  # PATH, exports, EDITOR, SDK vars
+    local.zsh:optional       # untracked: secrets + per-machine overrides
+    plugins.zsh              # zinit, plugins, compinit
+    aliases.zsh functions-files.zsh functions-system.zsh
+    iso-verify.zsh           # ISO checker: SHA-256 / BLAKE2 / GPG
+    functions-dev.zsh anime.zsh pawchive.zsh
+    prompt.zsh               # fastfetch, oh-my-posh, conda (keep last)
+)
+
+for _m in $_zsh_modules; do source "$ZSH_MOD_DIR/\$_m"; done`}
+                philosophy="Modules are sourced from a top-level loop on purpose: typeset/local inside a helper function would turn them function-local, leaving PATH empty."
               />
               <PhaseStepper phases={zshPhases} color="cyan" />
             </div>
@@ -306,24 +313,19 @@ path=(
                 <ShieldCheck className="text-lime" />
                 <h4>Window Management</h4>
               </div>
-              <p>An optimized Wayland environment (Hyprland) focused on performance and seamless workspace transitions.</p>
-              <CodeBlock 
-                filename="hyprland.conf"
-                language="bash"
-                code={`# Performance & Window Swallowing
-misc {
-  disable_hyprland_logo = true
-  enable_swallow = true
-  swallow_regex = ^(kitty)$
-}
-
-# Strategic Gaps & Borders
-general {
-  gaps_in=5
-  gaps_out=5
-  border_size=0
-}`}
-                philosophy="Window swallowing prevents terminal clutter by repurposing the current window for launched graphical applications."
+              <p>A TOML-driven dwm build paired with a full Quickshell Wayland UI (panel, launcher, control center, notifications). The dwm source, config bundle, and shell live in the <a href="https://github.com/fam007e/DWM" target="_blank" rel="noreferrer" style={{color:'var(--accent-lime)'}}>fam007e/DWM</a> repo; fun007 handles everything else.</p>
+              <CodeBlock
+                filename="DWM/config/themes.toml"
+                language="toml"
+                code={`# LIVE RELOAD — just save this file and changes apply instantly!
+# Manual reload: kill -USR1 \$(pidof dwm)
+#
+# HOW TO SWITCH THEME
+# 1. Change the theme name in [active] below to any theme defined here.
+# 2. Save the file — DWM, terminal, and Quickshell all update instantly!
+#
+# DARK:  nord · dracula · gruvbox · catppuccin · tokyonight · onedark`}
+                philosophy="One TOML file drives the whole desktop: dwm, the terminal, and Quickshell all follow the active theme — no per-app color juggling."
               />
               <div className="pro-tip" style={{ borderColor: 'var(--accent-lime)', background: 'var(--accent-lime-dim)' }}>
                 <Monitor size={20} className="text-lime" />
