@@ -128,18 +128,12 @@ fi
 
 # --- Phase 6: Config Deployment ---
 info "Phase 6: Deploying configuration files..."
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)"
-ZSH_DOT_DIR="$REPO_ROOT/system-admin/dotfiles/zsh"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-# Backup and symlink .zshrc
-if [ -f "$HOME/.zshrc" ] && [ ! -L "$HOME/.zshrc" ]; then
-    mv "$HOME/.zshrc" "$HOME/.zshrc.bak"
-    info "Existing .zshrc backed up to .zshrc.bak"
-fi
-ln -sf "$ZSH_DOT_DIR/zshrc_SAFE" "$HOME/.zshrc"
-
-# Link help file (referenced by 'hlp' alias in zshrc_SAFE)
-ln -sf "$ZSH_DOT_DIR/zshrc_aliases.md" "$HOME/zshrc_aliases.md"
+# deploy_dotfiles.sh symlinks ALL fun007 dotfiles (zsh modules, kitty, alacritty,
+# rofi, fastfetch, gtk, picom, zed, starship, tmux, btop, nanorc, font) into $HOME.
+# Idempotent, backs up any existing real files, and honours --dry-run.
+bash "$REPO_ROOT/system-admin/dotfiles/deploy_dotfiles.sh"
 
 # --- Phase 7: System Integration ---
 info "Phase 7: Finalizing..."

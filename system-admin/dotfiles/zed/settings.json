@@ -1,136 +1,93 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run `zed: open default settings` from the
+// command palette (cmd-shift-p / ctrl-shift-p)
 {
-  "vim": {
-    "default_mode": "normal",
-    "toggle_relative_line_numbers": false,
-    "use_system_clipboard": "always",
-    "use_multiline_find": false,
-    "use_smartcase_find": false,
-    "highlight_on_yank_duration": 200,
-    "custom_digraphs": {
-      "->": "→",
-      "<-": "←",
-      "=>": "⇒",
-      "<=": "⇐",
-      "!=": "≠",
-      ">=": "≥",
-      "=<": "≤",
-      "+-": "±",
-      "<<": "«",
-      ">>": "»",
-      "..": "…",
-      "tm": "™",
-      "co": "©",
-      "re": "®",
-      "dg": "°",
-      "mu": "μ",
-      "al": "α",
-      "be": "β",
-      "ga": "γ",
-      "de": "δ",
-      "la": "λ",
-      "pi": "π",
-      "si": "σ",
-      "th": "θ",
-      "om": "ω",
-      "in": "∞",
-      "sq": "√",
-      "su": "∑",
-      "pr": "∏",
-      "pa": "∂",
-      "na": "∇"
+  "agent_servers": {
+    "claude-acp": {
+      "type": "registry"
     },
-    "cursor_shape": {
-      "normal": "block",
-      "insert": "bar",
-      "visual": "hollow",
-      "replace": "underline"
+    "cursor": {
+      "type": "registry"
+    },
+    "gemini": {
+      "type": "registry"
+    },
+    "github-copilot-cli": {
+      "type": "registry"
     }
   },
-  "features": {
-    "edit_prediction_provider": "zed"
+  "context_servers": {
+    "mcp-server-gitlab": {
+      "enabled": true,
+      "remote": false,
+      "settings": {
+        "gitlab_personal_access_token": "<set via Zed settings UI or your local copy — never commit>"
+      }
+    },
+    "mcp-server-github": {
+      "enabled": true,
+      "remote": false,
+      "settings": {
+        "github_personal_access_token": "<set via Zed settings UI or your local copy — never commit>"
+      }
+    }
+  },
+  "edit_predictions": {
+    "codestral": {
+      "api_url": "https://codestral.mistral.ai"
+    },
+    "provider": "zed"
+  },
+  "project_panel": {
+    "dock": "left"
+  },
+  "outline_panel": {
+    "dock": "left"
+  },
+  "collaboration_panel": {
+    "dock": "left"
+  },
+  "git_panel": {
+    "dock": "left"
   },
   "agent": {
     "default_profile": "ask",
-    "always_allow_tool_actions": true,
+    "dock": "right",
     "default_model": {
-      "provider": "zed.dev",
-      "model": "claude-sonnet-4-latest"
+      "effort": "high",
+      "enable_thinking": true,
+      "provider": "openrouter",
+      "model": "z-ai/glm-5.3"
     },
-    "enabled": true,
-    "version": "2"
+    "model_parameters": []
   },
-  "auto_update": true,
-  "ui_font_size": 15,
-  "buffer_font_family": "FiraCode Nerd Font",
-  "buffer_font_weight": 500,
-  "buffer_font_features": {
-    "calt": false
-  },
-  "buffer_font_size": 14,
-  "autosave": {
-    "after_delay": {
-      "milliseconds": 1000
-    }
-  },
-  "theme": {
-    "mode": "dark",
-    "light": "One Light",
-    "dark": "Nord"
-  },
+  "ui_font_family": "FiraCode Nerd Font Mono",
+  "buffer_font_weight": 350.0,
+  "buffer_font_family": "CaskaydiaCove Nerd Font Mono",
   "telemetry": {
     "diagnostics": false,
     "metrics": false
   },
-  "scrollbar": {
-    "show": "auto",
-    "git_diff": true
+  "session": {
+    "trust_all_worktrees": true
   },
-  "tabs": {
-    "close_position": "left",
-    "git_status": true,
-    "file_icons": true
+  "vim_mode": true,
+  "base_keymap": "Cursor",
+  "icon_theme": {
+    "mode": "dark",
+    "light": "Zed (Default)",
+    "dark": "Zed (Default)"
   },
-  "languages": {
-    "Python": {
-      "tab_size": 4,
-      "show_edit_predictions": true
-    },
-    "C": {
-      "tab_size": 4,
-      "show_edit_predictions": true
-    },
-    "C++": {
-      "tab_size": 4,
-      "show_edit_predictions": true
-    },
-    "Rust": {
-      "tab_size": 4,
-      "show_edit_predictions": true
-    },
-    "JSON": {
-      "tab_size": 2,
-      "show_edit_predictions": true
-    },
-    "HTML": {
-      "tab_size": 2,
-      "show_edit_predictions": true
-    }
+  "ui_font_size": 12.0,
+  "buffer_font_size": 11.0,
+  "theme": {
+    "mode": "dark",
+    "light": "One Light",
+    "dark": "One Dark",
   },
-  "terminal": {
-    "font_family": "FiraCode Nerd Font"
-  },
-  "inlay_hints": {
-    "enabled": true,
-    "show_type_hints": true,
-    "show_other_hints": true
-  },
-  "enable_language_server": true,
-  "ensure_final_newline_on_save": true,
-  "lsp": {
-    "wakatime": {
-      "settings": {
-        "api-key": "<api key>"
-      }
-    }
-  }
 }

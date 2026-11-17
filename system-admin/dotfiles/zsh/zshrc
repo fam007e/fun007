@@ -1,0 +1,33 @@
+# ~/.zshrc : thin loader. All real config lives in $ZSH_MOD_DIR.
+# Order matters: env -> local -> plugins -> options -> aliases -> functions -> prompt.
+# Comment out any line to disable that module. Suffix ":optional" = no warning if absent.
+#
+# Modules are sourced from a top-level loop on purpose, NOT from a helper function:
+# `typeset`/`local` in a sourced file would become function-local (a local PATH is empty).
+
+ZSH_MOD_DIR="${ZSH_MOD_DIR:-$HOME/.config/zsh}"
+
+_zsh_modules=(
+    env.zsh                  # PATH, exports, EDITOR, SDK vars, overridable locations
+    local.zsh:optional       # untracked: secrets + per-machine overrides (PAWCHIVE_COOKIE, FUN007_DIR...)
+    plugins.zsh              # zinit, plugins, OMZ snippets, compinit
+    options.zsh              # history, completion styling, fzf/zoxide, keybindings
+    aliases.zsh              # all aliases (files, git, archives, network, disk...)
+    functions-files.zsh      # extract, crypt, ftext, cpp/cpg/mvg, up, trim...
+    functions-system.zsh     # distro/ver, apache/php/mysql, DNS, IP, mirrors, ff-upd
+    iso-verify.zsh           # iso_verify: SHA-256 / BLAKE2 / GPG ISO checker
+    functions-dev.zsh        # passwdGEN, git helpers, dwn_iso (uses iso_verify), flashiso
+    anime.zsh                # fzf anime torrent manager (run: anime)
+    pawchive.zsh             # pawchive API client + fzf browser (needs compinit: after plugins)
+    prompt.zsh               # fastfetch, oh-my-posh, conda, installer-added lines (keep last)
+)
+
+for _m in $_zsh_modules; do
+    _f="$ZSH_MOD_DIR/${_m%:optional}"
+    if [[ -r $_f ]]; then
+        source "$_f"
+    elif [[ $_m != *:optional ]]; then
+        print -u2 "zshrc: missing module: $_f"
+    fi
+done
+unset _zsh_modules _m _f

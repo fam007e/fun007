@@ -373,10 +373,11 @@ TS_EOF
 
 # ── 6. fun007 Ecosystem Bootstrap ────────────────────────────────────────────
 log "Cloning fun007 and bootstrapping ecosystem..."
+# Clone path MUST match env.zsh's FUN007_DIR default ($HOME/Github/fun007)
 su - "\$_USERNAME" <<UEOF
-mkdir -p "/home/\$_USERNAME/dev"
-git clone --depth 1 https://github.com/fam007e/fun007.git "/home/\$_USERNAME/dev/fun007"
-bash "/home/\$_USERNAME/dev/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
+mkdir -p "/home/\$_USERNAME/Github"
+git clone --depth 1 https://github.com/fam007e/fun007.git "/home/\$_USERNAME/Github/fun007"
+bash "/home/\$_USERNAME/Github/fun007/system-admin/dotfiles/zsh/zshrc_pkg_prep.sh"
 UEOF
 
 # ── 7. Cleanup: revert temporary NOPASSWD ────────────────────────────────────
@@ -393,6 +394,10 @@ INST_USER="$USERNAME" INST_PASS="$PASSWORD" INST_LUKS="$LUKS_PASSWORD" \
     arch-chroot /mnt /chroot_setup.sh
 
 rm /mnt/chroot_setup.sh
+
+# Config contains plaintext passwords — destroy it once the install succeeded.
+shred -u "$CONFIG_FILE" 2>/dev/null || rm -f "$CONFIG_FILE"
+log "config.json shredded."
 
 log "Installation complete. Unmounting and rebooting..."
 umount -R /mnt

@@ -1,7 +1,6 @@
 /* Refactored GTK CSS */
 @import url("src/_common.css");
 @import url("src/_colors.css");
-@import url("src/_common.css");
 @import url("src/_widgets.css");
 @import url("src/_action_bar.css");
 @import url("src/_app_notification.css");
@@ -32,7 +31,6 @@
 @import url("src/_notebooks.css");
 @import url("src/_paned.css");
 @import url("src/_pathbars.css");
-@import url("src/_popovers.css");
 @import url("src/_progress_bars.css");
 @import url("src/_scale.css");
 @import url("src/_scrollbars.css");
@@ -50,10 +48,8 @@
 @import url("src/_nautilus.css");
 @import url("src/_gedit.css");
 @import url("src/_gnucash.css");
-@import url("src/_calendar.css");
 @import url("src/_gala.css");
 @import url("src/_notify.css");
-@import url("src/_switch.css");
 @import url("src/_slingshot.css");
 @import url("src/_panel.css");
 @import url("src/_calculator.css");
@@ -63,6 +59,5 @@
 @import url("src/_photos.css");
 @import url("src/_avatar.css");
 @import url("src/_unity.css");
-@import url("src/_panel.css");
 @import url("src/_geary.css");
 @import url("src/_lightdm.css");
