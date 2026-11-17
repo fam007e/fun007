@@ -12,7 +12,8 @@
 #   1. Symlinks every config below into $HOME / $XDG_CONFIG_HOME
 #   2. Copies the Meslo Nerd Font into ~/.local/share/fonts
 #   3. Installs local.zsh (chmod 600) from the template on first run
-#   4. Optionally clones kickstart.nvim (kept in its own repo) if missing
+#   4. Optionally clones kickstart.nvim and fam007e/DWM (kept in their own
+#      repos) and seeds their configs if missing
 #
 # Safety:
 #   - Never touches a real file without backing it up to <target>.bak.<ts>
@@ -92,10 +93,10 @@ link "$DOT/nanorc_SAFE"       "$HOME/.nanorc"       file
 # --- 2. XDG config: whole-directory links (repo dir == live dir) --------------
 # zsh module dir: the loader above sources $ZSH_MOD_DIR/*.zsh from here.
 # NOTE: local.zsh (secrets, gitignored) is created inside the linked dir by you.
-# NOTE: dwm/secrets (API keys, gitignored) is created inside the linked dir too.
+# NOTE: dwm & quickshell are NOT here — they live in the fam007e/DWM repo (§5b).
 for name in zsh kitty alacritty rofi fastfetch gtk-3.0 gtk-4.0 picom zed \
             mpv ghostty fish flameshot qBittorrent vifm khal thefuck \
-            Thunar dwm quickshell qt5ct qt6ct xsettingsd \
+            Thunar qt5ct qt6ct xsettingsd \
             xdg-desktop-portal autostart environment.d systemd nwg-look; do
     link "$DOT/$name" "$HOME/.config/$name" dir
 done
@@ -127,16 +128,35 @@ else
     log "ok  (present): local.zsh (kept as-is)"
 fi
 
-# --- 5b. dwm secrets template (live API keys, gitignored) ----------------------
-if $DRY_RUN; then
-    echo "  [dry-run] ensure dwm/secrets/weather.env exists (skip if present)"
-elif [[ ! -e "$HOME/.config/dwm/secrets/weather.env" ]]; then
+# --- 5b. dwm + quickshell (upstream: fam007e/DWM repo) --------------------------
+# The DWM repo's install.sh seeds these (copy-if-missing, preserving local edits),
+# and manages dwm secrets/state. We mirror that behaviour: clone the repo if
+# absent, then seed only what does not exist yet. Full setup (build dwm, fonts,
+# scripts, secrets) = run ~/Github/DWM/install.sh yourself.
+DWM_DIR="${DWM_DIR:-$HOME/Github/DWM}"
+if [[ ! -e "$DWM_DIR/config" ]]; then
+    log "DWM repo not found at $DWM_DIR — cloning (skip via DWM_DIR=... or pre-clone)"
+    run git clone --depth 1 https://github.com/fam007e/DWM.git "$DWM_DIR"
+fi
+if [[ -e "$DWM_DIR/config/quickshell" ]]; then
+    if [[ ! -e "$HOME/.config/quickshell" ]]; then
+        run cp -r "$DWM_DIR/config/quickshell" "$HOME/.config/quickshell"
+        log "seeded ~/.config/quickshell from DWM repo"
+    else
+        log "ok  (present): ~/.config/quickshell (DWM-managed)"
+    fi
+fi
+if [[ -d "$DWM_DIR/config" ]] && ! $DRY_RUN; then
     mkdir -p "$HOME/.config/dwm/secrets"
-    cp "$DOT/dwm/secrets.example/weather.env" "$HOME/.config/dwm/secrets/weather.env"
-    chmod 600 "$HOME/.config/dwm/secrets/weather.env"
-    log "created dwm/secrets/weather.env from template (chmod 600) — add your API key"
-else
-    log "ok  (present): dwm/secrets/weather.env (kept as-is)"
+    for toml in hotkeys.toml themes.toml window-rules.toml; do
+        if [[ ! -f "$HOME/.config/dwm/$toml" && -f "$DWM_DIR/config/$toml" ]]; then
+            cp "$DWM_DIR/config/$toml" "$HOME/.config/dwm/$toml"
+            log "seeded ~/.config/dwm/$toml from DWM repo"
+        else
+            log "ok  (present/skip): ~/.config/dwm/$toml"
+        fi
+    done
+    log "note: full dwm setup (build, scripts, secrets) -> run $DWM_DIR/install.sh"
 fi
 
 # --- 6. kickstart.nvim (managed in its own repo) -------------------------------

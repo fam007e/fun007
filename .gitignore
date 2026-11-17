@@ -57,11 +57,5 @@ system-admin/arch-install/config.json
 
 # Zsh module: machine-specific secrets + per-machine overrides
 system-admin/dotfiles/zsh/local.zsh
-
-# dwm: secrets (live API keys) and state files written by dwm scripts
-system-admin/dotfiles/dwm/secrets/
-system-admin/dotfiles/dwm/.themes.toml.lock
-system-admin/dotfiles/dwm/syspill-mode
-system-admin/dotfiles/dwm/clock-format.conf
 system-admin/dotfiles/qBittorrent/qBittorrent-data.conf
 system-admin/dotfiles/vifm/vifminfo.json
