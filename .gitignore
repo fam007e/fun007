@@ -63,3 +63,5 @@ system-admin/dotfiles/dwm/secrets/
 system-admin/dotfiles/dwm/.themes.toml.lock
 system-admin/dotfiles/dwm/syspill-mode
 system-admin/dotfiles/dwm/clock-format.conf
+system-admin/dotfiles/qBittorrent/qBittorrent-data.conf
+system-admin/dotfiles/vifm/vifminfo.json
