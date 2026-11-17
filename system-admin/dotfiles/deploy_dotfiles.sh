@@ -92,7 +92,11 @@ link "$DOT/nanorc_SAFE"       "$HOME/.nanorc"       file
 # --- 2. XDG config: whole-directory links (repo dir == live dir) --------------
 # zsh module dir: the loader above sources $ZSH_MOD_DIR/*.zsh from here.
 # NOTE: local.zsh (secrets, gitignored) is created inside the linked dir by you.
-for name in zsh kitty alacritty rofi fastfetch gtk-3.0 picom zed; do
+# NOTE: dwm/secrets (API keys, gitignored) is created inside the linked dir too.
+for name in zsh kitty alacritty rofi fastfetch gtk-3.0 gtk-4.0 picom zed \
+            mpv ghostty fish flameshot qBittorrent vifm khal thefuck \
+            Thunar dwm quickshell qt5ct qt6ct xsettingsd \
+            xdg-desktop-portal autostart environment.d systemd nwg-look; do
     link "$DOT/$name" "$HOME/.config/$name" dir
 done
 
@@ -100,6 +104,9 @@ done
 link "$DOT/starship.toml"          "$HOME/.config/starship.toml"        file
 link "$DOT/tmux.conf"              "$HOME/.config/tmux/tmux.conf"       file
 link "$DOT/btop.conf"              "$HOME/.config/btop/btop.conf"       file
+link "$DOT/user-dirs.dirs"         "$HOME/.config/user-dirs.dirs"       file
+link "$DOT/mimeapps.list"          "$HOME/.config/mimeapps.list"        file
+link "$DOT/kdeglobals"             "$HOME/.config/kdeglobals"           file
 
 # --- 4. Fonts (copy — fontconfig scans ~/.local/share/fonts) -------------------
 if [[ -f "$DOT/MesloLGSNerdFontMono-Regular.ttf" ]]; then
@@ -118,6 +125,18 @@ elif [[ ! -e "$HOME/.config/zsh/local.zsh" ]]; then
     log "created local.zsh from template (chmod 600) — add secrets/overrides there"
 else
     log "ok  (present): local.zsh (kept as-is)"
+fi
+
+# --- 5b. dwm secrets template (live API keys, gitignored) ----------------------
+if $DRY_RUN; then
+    echo "  [dry-run] ensure dwm/secrets/weather.env exists (skip if present)"
+elif [[ ! -e "$HOME/.config/dwm/secrets/weather.env" ]]; then
+    mkdir -p "$HOME/.config/dwm/secrets"
+    cp "$DOT/dwm/secrets.example/weather.env" "$HOME/.config/dwm/secrets/weather.env"
+    chmod 600 "$HOME/.config/dwm/secrets/weather.env"
+    log "created dwm/secrets/weather.env from template (chmod 600) — add your API key"
+else
+    log "ok  (present): dwm/secrets/weather.env (kept as-is)"
 fi
 
 # --- 6. kickstart.nvim (managed in its own repo) -------------------------------
