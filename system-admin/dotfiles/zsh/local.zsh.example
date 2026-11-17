@@ -1,0 +1,14 @@
+# local.zsh : machine-specific and secret values. Loaded right after env.zsh.
+# install.sh copies this to local.zsh (chmod 600); local.zsh is gitignored.
+
+# export PAWCHIVE_COOKIE="session=PASTE_HERE"
+# export PAWCHIVE_DL_DIR="$HOME/Downloads/pawchive"
+# ANIME_DOWNLOAD_DIR="$HOME/Videos"
+
+# --- Personal locations (defaults live in env.zsh) ---
+# FUN007_DIR="$HOME/dev/fun007"                  # passwdGEN + oh-my-posh theme
+# OMP_CONFIG="$HOME/.config/omp/theme.omp.json"  # overrides the theme path entirely
+# ISO_DIR="$HOME/ISO"
+# FASTFETCH_SRC="$HOME/src/fastfetch"
+# OPWTTR_SCRIPT="$HOME/bin/OpWeatherinfo"
+# ZSH_ALIASES_DOC="$HOME/docs/zshrc_aliases.md"

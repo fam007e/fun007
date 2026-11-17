@@ -1,0 +1,23 @@
+[Default Applications]
+text/html=librewolf.desktop
+x-scheme-handler/http=librewolf.desktop
+x-scheme-handler/https=librewolf.desktop
+x-scheme-handler/about=librewolf.desktop
+x-scheme-handler/unknown=librewolf.desktop
+image/jpeg=userapp-feh-VIS512.desktop
+image/png=feh.desktop
+image/webp=feh.desktop
+application/octet-stream=dev.zed.Zed.desktop
+x-scheme-handler/earthdata-download=earthdata-download.desktop
+x-scheme-handler/antigravity=antigravity.desktop
+application/x-python-bytecode=nvim.desktop
+x-scheme-handler/claude-cli=claude-code-url-handler.desktop
+x-scheme-handler/zcode=zcode.desktop
+
+[Added Associations]
+image/jpeg=userapp-feh-VIS512.desktop;
+image/png=feh.desktop;
+image/webp=feh.desktop;
+application/octet-stream=dev.zed.Zed.desktop;
+application/x-tiled-tsx=com.google.Chrome.desktop;
+application/x-python-bytecode=nvim.desktop;dev.zed.Zed-Preview.desktop;
